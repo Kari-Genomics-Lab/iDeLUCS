@@ -25,26 +25,28 @@ def run(args):
 
     length = len(model.names)
     y_pred, probabilities, latent = model.predict()
-    df = pd.read_csv(args['GT_file'], sep='\t')
-    print("Cluster Distribution")
-    print(df['cluster_id'].value_counts())
-    y_true = df['cluster_id'].to_numpy()
-    unique_labels = list(np.unique(y_true))
-    numClasses = len(unique_labels)
-    y = np.array(list(map(lambda x: unique_labels.index(x), y_true)))
-    y_pred = y_pred.astype(np.int32)
 
-    # HUNGARIAN
-    ind, acc = cluster_acc(y, y_pred)
-    d = {}
-    for i, j in ind:
-        d[i] = j
-    w = np.zeros((numClasses, args['n_clusters']), dtype=np.int64)
-    for i in range(length):
-        #print(y[i], d[y_pred[i]])
-        w[y[i], d[y_pred[i]]] += 1
-    print(w)
-    print(acc)
+    if args['GT_file']:
+        df = pd.read_csv(args['GT_file'], sep='\t')
+        print("Cluster Distribution")
+        print(df['cluster_id'].value_counts())
+        y_true = df['cluster_id'].to_numpy()
+        unique_labels = list(np.unique(y_true))
+        numClasses = len(unique_labels)
+        y = np.array(list(map(lambda x: unique_labels.index(x), y_true)))
+        y_pred = y_pred.astype(np.int32)
+
+        # HUNGARIAN
+        ind, acc = cluster_acc(y, y_pred)
+        d = {}
+        for i, j in ind:
+            d[i] = j
+        w = np.zeros((numClasses, args['n_clusters']), dtype=np.int64)
+        for i in range(length):
+            #print(y[i], d[y_pred[i]])
+            w[y[i], d[y_pred[i]]] += 1
+        print(w)
+        print(acc)
 
     
 

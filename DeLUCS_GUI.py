@@ -14,7 +14,7 @@ from PyQt5.QtCore import QFile, QTextStream, QThread, pyqtSignal
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPixmap
 from src import models
-from src.utils import ProcessFasta, PlotPolygon, plot_confusion_matrix
+from src.utils import ProcessFasta, PlotPolygon, plot_confusion_matrix, mode_rand
 from src.utils_GUI import define_ToolTips
 import numpy as np
 import torch
@@ -25,15 +25,21 @@ from scipy import stats
 
 import matplotlib
 import matplotlib.pyplot as plt
+
 matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+plt.rcParams.update({'font.size': 8})
+
+QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)  # enable highdpi scaling
+QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)  # use highdpi icons
+
 
 class MplCanvas(FigureCanvas):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, width=5, height=4, dpi=96):
         fig = Figure(figsize=(width, height), dpi=dpi, tight_layout=True)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
@@ -49,6 +55,7 @@ class ParserThread(QThread):
 
     update_loading_progress = pyqtSignal(dict)
     parsing_error = pyqtSignal(str)
+
     def run(self):
         try:
             self.model.kmers, self.model.names, self.model.lengths, GT = ProcessFasta(self.args['sequence_file'],
@@ -72,12 +79,11 @@ class ParserThread(QThread):
             self.parsing_error.emit(str(e))
 
 
-
 class WorkerThread(QThread):
     def __init__(self, model, args):
         super().__init__()
         self.model = model
-        self.args = args  
+        self.args = args
 
     update_progress = pyqtSignal(dict)
     update_coordinates = pyqtSignal(dict)
@@ -91,12 +97,12 @@ class WorkerThread(QThread):
             self.model.epoch = 0
 
             for i in range(self.args['n_epochs']):
-                if (i % 1)==0:
+                if (i % 1) == 0:
                     probabilities = self.model.calculate_probs()
-                    self.update_coordinates.emit({"epoch":self.model.epoch, "probs":probabilities})
+                    self.update_coordinates.emit({"epoch": self.model.epoch, "probs": probabilities})
 
                 loss = self.model.unsupervised_training_epoch()
-                self.update_progress.emit({"epoch":self.model.epoch, "loss":loss, "n_voters": voter})
+                self.update_progress.emit({"epoch": self.model.epoch, "loss": loss, "n_voters": voter})
 
                 if self.isInterruptionRequested():
                     return
@@ -109,27 +115,27 @@ class WorkerThread(QThread):
             y_pred, probabilities, latent = self.model.predict()
             self.model.predictions.append(y_pred)
 
+
 class ResultsThread(QThread):
 
     def __init__(self, model, n_voters):
         super().__init__()
         self.model = model
         self.n_voters = n_voters
-    
+
     completed = pyqtSignal(dict)
 
     def run(self):
-        #y_pred, probabilities, latent = self.model.predict()
+        # y_pred, probabilities, latent = self.model.predict()
 
         if len(self.model.predictions) <= 1:
             y_pred, probabilities, latent = self.model.predict()
-        else: # There is more than one assignment saved
+        else:  # There is more than one assignment saved
 
-            #We find a uniform assignment to all predictions using hungarian
+            # We find a uniform assignment to all predictions using hungarian
             predictions = np.array(self.model.predictions)
             print(predictions.shape)
             for k in range(1, predictions.shape[0]):
-                print(predictions.shape)
                 ind, _ = cluster_acc(predictions[0][:], predictions[k][:])
                 d = {}
                 for i, j in ind:
@@ -139,22 +145,23 @@ class ResultsThread(QThread):
                     predictions[k][i] = d[predictions[k][i]]
 
             # Take the majority voting of the predictions.
-            mode, counts = stats.mode(predictions, axis=0)
+            # mode, counts = stats.mode(predictions, axis=0)
+            mode, counts = mode_rand(predictions, axis=0)
 
-            y_pred, probabilities = mode[0][:], (counts/ self.n_voters)[0][:]
+            y_pred, probabilities = mode[0][:], (counts / self.n_voters)[0][:]
 
-        self.completed.emit({"assignments":y_pred, "probabilities":probabilities})
+        self.completed.emit({"assignments": y_pred, "probabilities": probabilities, "latent": latent})
 
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1920, 1080)
+        MainWindow.resize(1280, 720)
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
@@ -181,7 +188,7 @@ class Ui_MainWindow(object):
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
@@ -226,7 +233,7 @@ class Ui_MainWindow(object):
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Inactive, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
@@ -268,16 +275,17 @@ class Ui_MainWindow(object):
         brush = QtGui.QBrush(QtGui.QColor(119, 119, 118))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ButtonText, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(
+            QtGui.QColor(255, 255, 255))  ######################(238, 238, 236)#############################
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Base, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Window, brush)
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.Shadow, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.AlternateBase, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 220))
@@ -292,14 +300,12 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
-        self.tabWidget.setGeometry(QtCore.QRect(60, 50, 1820, 980))
-        
-
+        self.tabWidget.setGeometry(QtCore.QRect(40, 33, 1213, 653))
 
         self.LOGO = QtWidgets.QLabel(MainWindow)
         pixmap = QPixmap('logo.png')
         self.LOGO.setPixmap(pixmap)
-        self.LOGO.setGeometry(QtCore.QRect(1575, 25, 300, 70))
+        self.LOGO.setGeometry(QtCore.QRect(1050, 12, 200, 46))
         self.LOGO.setScaledContents(True)
 
         palette = QtGui.QPalette()
@@ -325,24 +331,22 @@ class Ui_MainWindow(object):
         self.tabWidget.setObjectName("tabWidget")
         self.Settings_tab = QtWidgets.QWidget()
         self.Settings_tab.setObjectName("Settings_tab")
-        
+
         self.Reset_Button = QtWidgets.QPushButton(self.Settings_tab)
-        self.Reset_Button.setGeometry(QtCore.QRect(790, 760, 300, 40))
+        self.Reset_Button.setGeometry(QtCore.QRect(526, 506, 200, 26))
         self.Reset_Button.setObjectName("Reset_Button")
-        
+
         self.Submit_Button = QtWidgets.QPushButton(self.Settings_tab)
-        self.Submit_Button.setGeometry(QtCore.QRect(830, 830, 220, 70))
+        self.Submit_Button.setGeometry(QtCore.QRect(553, 553, 146, 46))
         self.Submit_Button.setObjectName("Submit_Button")
-        
-        
-        
+
         self.Settings_toolBox = QtWidgets.QToolBox(self.Settings_tab)
-        self.Settings_toolBox.setGeometry(QtCore.QRect(360, 100, 1040, 530))
+        self.Settings_toolBox.setGeometry(QtCore.QRect(240, 66, 693, 353))
         palette = QtGui.QPalette()
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.WindowText, brush)
-        brush = QtGui.QBrush(QtGui.QColor(238, 238, 236))
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Active, QtGui.QPalette.Button, brush)
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255))
@@ -474,11 +478,9 @@ class Ui_MainWindow(object):
         brush = QtGui.QBrush(QtGui.QColor(0, 0, 0))
         brush.setStyle(QtCore.Qt.SolidPattern)
         palette.setBrush(QtGui.QPalette.Disabled, QtGui.QPalette.ToolTipText, brush)
-        
 
-        #self.LOGO.resize(pixmap.width(), pixmap.height())
+        # self.LOGO.resize(pixmap.width(), pixmap.height())
 
-        
         self.Settings_toolBox.setPalette(palette)
         self.Settings_toolBox.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.Settings_toolBox.setAutoFillBackground(False)
@@ -488,115 +490,113 @@ class Ui_MainWindow(object):
         self.basic_page.setGeometry(QtCore.QRect(0, 0, 921, 423))
         self.basic_page.setObjectName("basic_page")
         self.label = QtWidgets.QLabel(self.basic_page)
-        self.label.setGeometry(QtCore.QRect(50, 25, 311, 31))
+        self.label.setGeometry(QtCore.QRect(33, 16, 207, 20))
         self.label.setObjectName("label")
         self.label_2 = QtWidgets.QLabel(self.basic_page)
-        self.label_2.setGeometry(QtCore.QRect(50, 75, 411, 41))
+        self.label_2.setGeometry(QtCore.QRect(33, 50, 247, 20))
         self.label_2.setObjectName("label_2")
         self.label_5 = QtWidgets.QLabel(self.basic_page)
-        self.label_5.setGeometry(QtCore.QRect(50, 230, 411, 41))
+        self.label_5.setGeometry(QtCore.QRect(33, 153, 274, 27))
         self.label_5.setObjectName("label_5")
         self.label_3 = QtWidgets.QLabel(self.basic_page)
-        self.label_3.setGeometry(QtCore.QRect(50, 130, 411, 41))
+        self.label_3.setGeometry(QtCore.QRect(33, 86, 274, 27))
         self.label_3.setObjectName("label_3")
         self.label_4 = QtWidgets.QLabel(self.basic_page)
-        self.label_4.setGeometry(QtCore.QRect(50, 180, 411, 41))
+        self.label_4.setGeometry(QtCore.QRect(33, 120, 274, 27))
         self.label_4.setObjectName("label_4")
 
         self.label_k = QtWidgets.QLabel(self.basic_page)
-        self.label_k.setGeometry(QtCore.QRect(52, 280, 411, 41))
+        self.label_k.setGeometry(QtCore.QRect(34, 186, 274, 27))
         self.label_k.setObjectName("label_k")
 
-
         self.input_n_epochs = QtWidgets.QSpinBox(self.basic_page)
-        self.input_n_epochs.setGeometry(QtCore.QRect(850, 230, 121, 41))
-        self.input_n_epochs.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.input_n_epochs.setGeometry(QtCore.QRect(566, 153, 80, 27))
+        self.input_n_epochs.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.input_n_epochs.setMinimum(1)
         self.input_n_epochs.setMaximum(300)
-        self.input_n_epochs.setProperty("value", 50)
+        self.input_n_epochs.setProperty("value", 35)
         self.input_n_epochs.setObjectName("input_n_epochs")
         self.input_n_mimics = QtWidgets.QSpinBox(self.basic_page)
-        self.input_n_mimics.setGeometry(QtCore.QRect(850, 180, 121, 41))
-        self.input_n_mimics.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.input_n_mimics.setGeometry(QtCore.QRect(566, 120, 80, 27))
+        self.input_n_mimics.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.input_n_mimics.setMinimum(2)
         self.input_n_mimics.setMaximum(10)
         self.input_n_mimics.setProperty("value", 3)
         self.input_n_mimics.setObjectName("input_n_mimics")
 
         self.input_n_clusters = QtWidgets.QSpinBox(self.basic_page)
-        self.input_n_clusters.setGeometry(QtCore.QRect(850, 130, 121, 41))
-        self.input_n_clusters.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.input_n_clusters.setGeometry(QtCore.QRect(566, 86, 80, 27))
+        self.input_n_clusters.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
         self.input_n_clusters.setMinimum(1)
         self.input_n_clusters.setMaximum(50)
         self.input_n_clusters.setValue(5)
         self.input_n_clusters.setObjectName("input_n_clusters")
 
         self.input_k = QtWidgets.QSpinBox(self.basic_page)
-        self.input_k.setGeometry(QtCore.QRect(850, 280, 121, 41))
-        self.input_k.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.input_k.setMinimum(1)
-        self.input_k.setMaximum(10)
+        self.input_k.setGeometry(QtCore.QRect(566, 186, 80, 2))
+        self.input_k.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignTrailing | QtCore.Qt.AlignVCenter)
+        self.input_k.setMinimum(4)
+        self.input_k.setMaximum(6)
         self.input_k.setValue(6)
         self.input_k.setObjectName("input_k")
-        
-        
+
         self.ChooseSeq_Button = QtWidgets.QPushButton(self.basic_page)
-        self.ChooseSeq_Button.setGeometry(QtCore.QRect(800, 10, 191, 31))
+        self.ChooseSeq_Button.setGeometry(QtCore.QRect(533, 6, 127, 20))
         self.ChooseSeq_Button.setCheckable(False)
         self.ChooseSeq_Button.setFlat(True)
         self.ChooseSeq_Button.setObjectName("ChooseSeq_Button")
+        self.FASTA_fname = [""]
+
         self.ChooseGT_Button = QtWidgets.QPushButton(self.basic_page)
-        self.ChooseGT_Button.setGeometry(QtCore.QRect(800, 70, 191, 31))
+        self.ChooseGT_Button.setGeometry(QtCore.QRect(533, 46, 127, 20))
         self.ChooseGT_Button.setCheckable(False)
         self.ChooseGT_Button.setFlat(True)
         self.ChooseGT_Button.setObjectName("ChooseGT_Button")
         self.Settings_toolBox.addItem(self.basic_page, "")
         self.advanced_page = QtWidgets.QWidget()
-        self.advanced_page.setGeometry(QtCore.QRect(0, 0, 921, 423))
+        self.advanced_page.setGeometry(QtCore.QRect(0, 0, 614, 282))
         self.advanced_page.setObjectName("advanced_page")
 
-
-
         self.label_6 = QtWidgets.QLabel(self.advanced_page)
-        self.label_6.setGeometry(QtCore.QRect(50, 10, 311, 31))
+        self.label_6.setGeometry(QtCore.QRect(33, 6, 207, 20))
         self.label_6.setObjectName("label_6")
         self.label_7 = QtWidgets.QLabel(self.advanced_page)
-        self.label_7.setGeometry(QtCore.QRect(50, 65, 371, 31))
+        self.label_7.setGeometry(QtCore.QRect(33, 43, 247, 20))
         self.label_7.setObjectName("label_7")
         self.label_8 = QtWidgets.QLabel(self.advanced_page)
-        self.label_8.setGeometry(QtCore.QRect(50, 175, 371, 31))
+        self.label_8.setGeometry(QtCore.QRect(33, 116, 247, 20))
         self.label_8.setObjectName("label_8")
         self.label_17 = QtWidgets.QLabel(self.advanced_page)
-        self.label_17.setGeometry(QtCore.QRect(50, 225, 311, 31))
+        self.label_17.setGeometry(QtCore.QRect(33, 150, 207, 20))
         self.label_17.setObjectName("label_17")
         self.input_optimizer = QtWidgets.QComboBox(self.advanced_page)
-        self.input_optimizer.setGeometry(QtCore.QRect(850, 10, 145, 41))
+        self.input_optimizer.setGeometry(QtCore.QRect(566, 6, 96, 27))
         self.input_optimizer.setObjectName("input_optimizer")
         self.input_optimizer.addItem("")
         self.input_optimizer.addItem("")
         self.input_optimizer.addItem("")
         self.input_optimizer.addItem("")
         self.label_9 = QtWidgets.QLabel(self.advanced_page)
-        self.label_9.setGeometry(QtCore.QRect(50, 120, 311, 31))
+        self.label_9.setGeometry(QtCore.QRect(33, 80, 207, 20))
         self.label_9.setObjectName("label_9")
         self.input_batch_sz = QtWidgets.QSpinBox(self.advanced_page)
-        self.input_batch_sz.setGeometry(QtCore.QRect(850, 125, 141, 41))
+        self.input_batch_sz.setGeometry(QtCore.QRect(566, 83, 94, 27))
         self.input_batch_sz.setMaximum(600)
         self.input_batch_sz.setObjectName("input_batch_sz")
         self.input_batch_sz.setProperty("value", 252)
         self.input_lambda = QtWidgets.QLineEdit(self.advanced_page)
-        self.input_lambda.setGeometry(QtCore.QRect(850, 65, 141, 41))
+        self.input_lambda.setGeometry(QtCore.QRect(566, 43, 94, 27))
         self.input_lambda.setObjectName("input_lambda")
         self.input_lambda.insert("2.5")
 
         self.input_n_voters = QtWidgets.QSpinBox(self.advanced_page)
-        self.input_n_voters.setGeometry(QtCore.QRect(850, 225, 141, 41))
+        self.input_n_voters.setGeometry(QtCore.QRect(566, 150, 94, 27))
         self.input_n_voters.setObjectName("input_n_voters")
         self.input_n_voters.setMaximum(600)
         self.input_n_voters.setProperty("value", 1)
-        
+
         self.input_noise = QtWidgets.QSpinBox(self.advanced_page)
-        self.input_noise.setGeometry(QtCore.QRect(850, 175, 141, 41))
+        self.input_noise.setGeometry(QtCore.QRect(566, 116, 94, 27))
         self.input_noise.setObjectName("input_noise")
         self.input_noise.setMaximum(50)
         self.input_noise.setMinimum(0)
@@ -611,68 +611,56 @@ class Ui_MainWindow(object):
         self.Running_tab = QtWidgets.QWidget()
         self.Running_tab.setObjectName("Running_tab")
         self.progressBar = QtWidgets.QProgressBar(self.Running_tab)
-        self.progressBar.setGeometry(QtCore.QRect(550, 650, 1200, 41))
+        self.progressBar.setGeometry(QtCore.QRect(366, 433, 800, 27))
         self.progressBar.setProperty("value", 0)
         self.progressBar.setObjectName("progressBar")
 
         self.Summary = QtWidgets.QLabel(self.Running_tab)
-        self.Summary.setGeometry(QtCore.QRect(70, 80, 261, 51))
+        self.Summary.setGeometry(QtCore.QRect(46, 15, 174, 34))
         self.Summary.setObjectName("Summary")
         self.summary_n_seq = QtWidgets.QLabel(self.Running_tab)
-        self.summary_n_seq.setGeometry(QtCore.QRect(70, 140, 350, 31))
+        self.summary_n_seq.setGeometry(QtCore.QRect(46, 53, 233, 20))
         self.summary_n_seq.setObjectName("summary_n_seq")
         self.summary_min_len = QtWidgets.QLabel(self.Running_tab)
-        self.summary_min_len.setGeometry(QtCore.QRect(70, 190, 350, 31))
+        self.summary_min_len.setGeometry(QtCore.QRect(46, 86, 233, 20))
         self.summary_min_len.setObjectName("summary_min_len")
         self.summary_max_len = QtWidgets.QLabel(self.Running_tab)
-        self.summary_max_len.setGeometry(QtCore.QRect(70, 240, 350, 31))
+        self.summary_max_len.setGeometry(QtCore.QRect(46, 119, 233, 20))
         self.summary_max_len.setObjectName("summary_max_len")
-        
+
         self.summary_avg_len = QtWidgets.QLabel(self.Running_tab)
-        self.summary_avg_len.setGeometry(QtCore.QRect(70, 290, 350, 31))
+        self.summary_avg_len.setGeometry(QtCore.QRect(46, 150, 233, 20))
         self.summary_avg_len.setObjectName("summary_avg_len")
 
         self.summary_GT = QtWidgets.QLabel(self.Running_tab)
-        self.summary_GT.setGeometry(QtCore.QRect(70, 330, 350, 350))
+        self.summary_GT.setGeometry(QtCore.QRect(46, 220, 233, 233))
         self.summary_avg_len.setObjectName("summary_GT")
-        
-        
-        
+
         self.progress_info = QtWidgets.QLabel(self.Running_tab)
-        self.progress_info.setGeometry(QtCore.QRect(550, 600, 271, 41))
+        self.progress_info.setGeometry(QtCore.QRect(366, 400, 180, 27))
         font = QtGui.QFont()
         font.setPointSize(9)
         self.progress_info.setFont(font)
         self.progress_info.setObjectName("progress_info")
         self.Training_Button = QtWidgets.QPushButton(self.Running_tab)
-        self.Training_Button.setGeometry(QtCore.QRect(830, 800, 221, 71))
+        self.Training_Button.setGeometry(QtCore.QRect(553, 533, 147, 47))
         self.Training_Button.setObjectName("Training_Button")
         self.Stop_Training_Button = QtWidgets.QPushButton(self.Running_tab)
-        self.Stop_Training_Button.setGeometry(QtCore.QRect(1330, 800, 221, 71))
+        self.Stop_Training_Button.setGeometry(QtCore.QRect(886, 533, 147, 47))
         self.Stop_Training_Button.setObjectName("Stop_Training_Button")
         self.tabWidget.addTab(self.Running_tab, "")
-        self.tabWidget.setTabEnabled(1,False)
-        
+        self.tabWidget.setTabEnabled(1, False)
+
         ## Define Results Tab
         self.Results_tab = QtWidgets.QWidget()
         self.Results_tab.setObjectName("Results_tab")
-        self.Matrix_Button = QtWidgets.QRadioButton(self.Results_tab)
-        self.Matrix_Button.setGeometry(QtCore.QRect(620, 550, 212, 81))
-        self.Matrix_Button.setChecked(True)
-        self.Matrix_Button.setObjectName("Matrix_Button")
-        self.tSNE_Button = QtWidgets.QRadioButton(self.Results_tab)
-        self.tSNE_Button.setGeometry(QtCore.QRect(860, 570, 212, 40))
-        self.tSNE_Button.setObjectName("tSNE_Button")
-
         self.save_results = QtWidgets.QPushButton(self.Results_tab)
-        self.save_results.setGeometry(QtCore.QRect(450, 850, 185, 48))
+        self.save_results.setGeometry(QtCore.QRect(200, 566, 123, 32))
         self.save_results.setObjectName("save_results")
-        self.save_model = QtWidgets.QPushButton(self.Results_tab)
-        self.save_model.setGeometry(QtCore.QRect(730, 640, 185, 48))
-        self.save_model.setObjectName("save_model")
+
         self.tabWidget.addTab(self.Results_tab, "")
         self.tabWidget.setTabEnabled(2, False)
-        
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1301, 39))
@@ -681,8 +669,6 @@ class Ui_MainWindow(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-
-        
 
         self.Submit_Button.clicked.connect(self.parse)
         self.Reset_Button.clicked.connect(self.reset_to_default)
@@ -710,12 +696,13 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Sequence File:"))
         self.label_2.setText(_translate("MainWindow", "Ground Truth File (Optional):"))
         self.label_5.setText(_translate("MainWindow", "Training Epochs:"))
-        self.label_k.setText(_translate("MainWindow","k-mer length:"))
+        self.label_k.setText(_translate("MainWindow", "k-mer length:"))
         self.label_3.setText(_translate("MainWindow", "Number of Clusters:"))
         self.label_4.setText(_translate("MainWindow", "Number of mimics:"))
         self.ChooseSeq_Button.setText(_translate("MainWindow", "Choose File"))
         self.ChooseGT_Button.setText(_translate("MainWindow", "Choose File "))
-        self.Settings_toolBox.setItemText(self.Settings_toolBox.indexOf(self.basic_page), _translate("MainWindow", "Basic"))
+        self.Settings_toolBox.setItemText(self.Settings_toolBox.indexOf(self.basic_page),
+                                          _translate("MainWindow", "Basic"))
 
         self.label_6.setText(_translate("MainWindow", "Model Optimizer:"))
         self.label_7.setText(_translate("MainWindow", "Balance Hyperparameter:"))
@@ -726,7 +713,8 @@ class Ui_MainWindow(object):
         self.input_optimizer.setItemText(3, _translate("MainWindow", "Adadelta"))
         self.label_9.setText(_translate("MainWindow", "Batch Size:"))
         self.label_17.setText(_translate("MainWindow", "Number of Voters"))
-        self.Settings_toolBox.setItemText(self.Settings_toolBox.indexOf(self.advanced_page), _translate("MainWindow", "Advanced Settings"))
+        self.Settings_toolBox.setItemText(self.Settings_toolBox.indexOf(self.advanced_page),
+                                          _translate("MainWindow", "Advanced Settings"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Settings_tab), _translate("MainWindow", "Settings"))
         self.Summary.setText(_translate("MainWindow", "Dataset Summary"))
         self.summary_n_seq.setText(_translate("MainWindow", "N. Sequences:"))
@@ -737,14 +725,8 @@ class Ui_MainWindow(object):
         self.Training_Button.setText(_translate("MainWindow", "Start"))
         self.Stop_Training_Button.setText(_translate("MainWindow", "Stop"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Running_tab), _translate("MainWindow", "Training"))
-        self.Matrix_Button.setText(_translate("MainWindow", "Conf&usion \n Matrix"))
-        self.tSNE_Button.setText(_translate("MainWindow", "tSNE"))
-        
         self.save_results.setText(_translate("MainWindow", "Save Results"))
-        self.save_model.setText(_translate("MainWindow", "Save Model"))
-
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Results_tab), _translate("MainWindow", "Results"))
-        
         self.Training_Button.setVisible(False)
         self.Stop_Training_Button.setVisible(False)
 
@@ -765,16 +747,16 @@ class Ui_MainWindow(object):
         self.args['optimizer'] = self.input_optimizer.currentData()
         self.args['batch_sz'] = int(self.input_batch_sz.text())
         self.args['lambda'] = float(self.input_lambda.text())
-        self.args['noise'] =  int(self.input_noise.text())
+        self.args['noise'] = int(self.input_noise.text())
         self.args['n_voters'] = int(self.input_n_voters.text())
 
         if self.args['sequence_file'] == "":
             QMessageBox.critical(self.centralwidget, "Error!", "Wowza! \n Please Select a Fasta File")
 
-        elif self.args['batch_sz'] % self.args['n_mimics']  !=  0:
+        elif self.args['batch_sz'] % self.args['n_mimics'] != 0:
             QMessageBox.critical(self.centralwidget, "Error!", "Batch Size Must be a Multiple of N_mimics")
 
-        else: 
+        else:
 
             self.training_loss = []
             self.model = models.IID_model(self.args)
@@ -783,21 +765,20 @@ class Ui_MainWindow(object):
             self.worker.parsing_error.connect(self.evt_display_parsing_error)
             self.worker.update_loading_progress.connect(self.evt_update_loading_progress)
 
-            self.tabWidget.setTabEnabled(1,True)
+            self.tabWidget.setTabEnabled(1, True)
 
             self.progress_info.setText("Parsing Fasta File ....")
             self.Training_Button.setEnabled(True)
 
-            self.display_polygon = MplCanvas(self.Running_tab, width=5, height=4, dpi=100)
+            self.display_polygon = MplCanvas(self.Running_tab, width=5, height=4, dpi=96)
             self.display_polygon.axes.axis('off')
             self.display_polygon.axes.set_title('Training Progress (Epoch 0)')
-            self.display_polygon.setGeometry(QtCore.QRect(540, 30, 551, 420))
+            self.display_polygon.setGeometry(QtCore.QRect(360, 20, 367, 280))
             self.display_polygon.setObjectName("display_polygon")
-            
 
-            self.display_training = MplCanvas(self.Running_tab, width=5, height=4, dpi=100)
-            self.display_training.setGeometry(QtCore.QRect(1100, 30, 660, 420))
-            self.display_training.axes.set_xlim(0,self.args['n_epochs'])
+            self.display_training = MplCanvas(self.Running_tab, width=5, height=4, dpi=96)
+            self.display_training.setGeometry(QtCore.QRect(733, 20, 440, 280))
+            self.display_training.axes.set_xlim(0, self.args['n_epochs'])
             self.display_training.axes.grid(True)
             self.display_training.axes.set_title("Learning Curve")
             self.display_training.axes.set_xlabel("Epoch")
@@ -807,23 +788,20 @@ class Ui_MainWindow(object):
             toolbar.setMaximumHeight(60)
             toolbar.setStyleSheet("QToolBar { border: none }")
 
-
             layout = QtWidgets.QVBoxLayout()
             layout.addWidget(toolbar)
-            layout.setContentsMargins(0,0,0,0)
+            layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
 
-            #Create a placeholder widget to hold our toolbar and canvas.
-            #Graphic Container
+            # Create a placeholder widget to hold our toolbar and canvas.
+            # Graphic Container
             self.widget_display_training = QtWidgets.QWidget(self.Running_tab)
-            self.widget_display_training.setGeometry(QtCore.QRect(1200, 450, 600, 60))
+            self.widget_display_training.setGeometry(QtCore.QRect(800, 300, 400, 40))
             self.widget_display_training.setObjectName("display_training")
             self.widget_display_training.setLayout(layout)
 
             self.tabWidget.setCurrentIndex(1)
-        
-        
-        
+
     def train(self):
         self.training_plot = [None] * self.args["n_voters"]
         self.worker = WorkerThread(self.model, self.args)
@@ -836,19 +814,15 @@ class Ui_MainWindow(object):
 
         self.Training_Button.setEnabled(False)
 
-
     def stop_training(self):
         self.worker.requestInterruption()
         self.worker.wait(1)
 
-
     def evt_show_results(self, info):
-  
-        self.progress_info.setText("Preparing results ...")
         length = len(self.model.names)
 
         self.Results_Table = QtWidgets.QTableWidget(self.Results_tab)
-        self.Results_Table.setGeometry(QtCore.QRect(30, 50, 1000, 750))
+        self.Results_Table.setGeometry(QtCore.QRect(40, 33, 500, 500))
         font = QtGui.QFont()
         font.setPointSize(8)
         self.Results_Table.setFont(font)
@@ -870,7 +844,7 @@ class Ui_MainWindow(object):
         self.Results_Table.setItem(0, 1, item)
         item = QtWidgets.QTableWidgetItem()
         self.Results_Table.setItem(0, 2, item)
-        self.Results_Table.horizontalHeader().setDefaultSectionSize(250)
+        self.Results_Table.horizontalHeader().setDefaultSectionSize(145)
 
         item = self.Results_Table.verticalHeaderItem(0)
         item.setText("1")
@@ -885,8 +859,8 @@ class Ui_MainWindow(object):
         self.Results_Table.setSortingEnabled(__sortingEnabled)
 
         for i in range(length):
-            #print(self.model.dataset_info['names'][i], info['assignments'][i], info['probabilities'][i])
-            
+            # print(self.model.dataset_info['names'][i], info['assignments'][i], info['probabilities'][i])
+
             item = QtWidgets.QTableWidgetItem()
             self.Results_Table.setItem(i, 0, item)
             item = QtWidgets.QTableWidgetItem()
@@ -899,11 +873,11 @@ class Ui_MainWindow(object):
             item = self.Results_Table.item(i, 1)
             item.setText(str(info['assignments'][i]))
             item = self.Results_Table.item(i, 2)
-            item.setText(str(100*info['probabilities'][i])[:5])
+            item.setText(str(100 * info['probabilities'][i])[:5])
 
         if self.GT_fname:
-            self.display_results = MplCanvas(self.Results_tab, width=5, height=4, dpi=100)
-            self.display_results.setGeometry(QtCore.QRect(1040, 50, 600, 500))
+            self.display_results = MplCanvas(self.Results_tab, width=5, height=4, dpi=96)
+            self.display_results.setGeometry(QtCore.QRect(693, 33, 400, 333))
 
             df = pd.read_csv(self.GT_fname, sep='\t')
             print("Cluster Distribution")
@@ -922,27 +896,34 @@ class Ui_MainWindow(object):
                 d[i] = j
             w = np.zeros((numClasses, self.args["n_clusters"]), dtype=np.int64)
             for i in range(length):
-                #print(y[i], d[y_pred[i]])
+                # print(y[i], d[y_pred[i]])
                 w[y[i], d[y_pred[i]]] += 1
 
             plot_confusion_matrix(w, unique_labels, ax=self.display_results.axes, normalize=False)
+        else:
+            from sklearn.manifold import TSNE
+            self.display_results = MplCanvas(self.Results_tab, width=5, height=4, dpi=96)
+            self.display_results.setGeometry(QtCore.QRect(693, 33, 400, 333))
+            embedded = TSNE(n_components=2, init='random').fit_transform(info['latent'])
+            self.display_results.axes.scatter(embedded[:, 0], embedded[:, 1], c=info['assignments'].astype(np.int32))
+            self.display_results.axes.axis('off')
+            self.display_results.axes.set_title('tSNE plot of latent representation.')
 
         self.progress_info.setText("Results are ready")
         self.tabWidget.setTabEnabled(2, True)
 
     def evt_update_loading_progress(self, stats):
-        self.summary_n_seq.setText( "N. Sequences: \t {}".format(stats["n_seq"]))
+        self.summary_n_seq.setText("N. Sequences: \t {}".format(stats["n_seq"]))
         self.summary_min_len.setText("Min. Length: \t {}".format(stats["min_len"]))
         self.summary_max_len.setText("Max. Length: \t {}".format(stats["max_len"]))
-        self.summary_avg_len.setText("Avg. Length: \t {}".format(stats["avg_len"]))
+        self.summary_avg_len.setText(f'Avg. Length: \t {stats["avg_len"]:,}')
         self.summary_avg_len.setObjectName("summary_avg_len")
-        #if stats['gt_summary']:
+        # if stats['gt_summary']:
         #    self.summary_GT.setText("Dataset Label Summary: \n{}".format(stats['gt_summary']))
 
         self.progress_info.setText("Ready to train!")
         self.Training_Button.setVisible(True)
         self.Stop_Training_Button.setVisible(True)
-
 
     def evt_training_finished(self):
         self.progress_info.setText("Training Complete")
@@ -951,21 +932,21 @@ class Ui_MainWindow(object):
         self.results_worker = ResultsThread(self.model, self.args['n_voters'])
         self.results_worker.start()
         self.results_worker.completed.connect(self.evt_show_results)
+        self.progress_info.setText("Preparing results ...")
 
     def evt_display_parsing_error(self, msg):
         self.tabWidget.setTabEnabled(1, False)
         self.tabWidget.setCurrentIndex(0)
         QMessageBox.critical(self.centralwidget, "Check your Files", "Wowza! \n" + msg)
 
-
     def evt_update_progress(self, info):
 
-
         if self.training_plot[info["n_voters"]] is None:
-            #self.display_training.axes.set_ylim(-(2*self.args['lambda']-1)*np.log(self.args['n_clusters']) + 3, info["loss"])
-            self.training_loss=[info["loss"]]
-            self.display_training.axes.set_ylim(self.training_loss[0]-2.2, self.training_loss[0])
-            self.training_plot[info["n_voters"]], = self.display_training.axes.plot(range(1, info["epoch"] + 1), self.training_loss)
+            # self.display_training.axes.set_ylim(-(2*self.args['lambda']-1)*np.log(self.args['n_clusters']) + 3, info["loss"])
+            self.training_loss = [info["loss"]]
+            self.display_training.axes.set_ylim(self.training_loss[0] - 2.2, self.training_loss[0])
+            self.training_plot[info["n_voters"]], = self.display_training.axes.plot(range(1, info["epoch"] + 1),
+                                                                                    self.training_loss)
             self.training_plot[info["n_voters"]].set_label(f'Model {info["n_voters"] + 1} ')
             self.display_training.axes.legend()
 
@@ -973,17 +954,17 @@ class Ui_MainWindow(object):
             self.training_loss.append(info["loss"])
             self.training_plot[info["n_voters"]].set_ydata(self.training_loss)
             self.training_plot[info["n_voters"]].set_xdata(range(info["epoch"]))
-        
+
         self.display_training.draw()
-        self.progressBar.setValue(10 + int(90 * info['epoch'] /self.args['n_epochs']))
+        self.progressBar.setValue(10 + int(90 * info['epoch'] / self.args['n_epochs']))
 
     def evt_plot_progress(self, info):
         self.display_polygon.axes.clear()
-        PlotPolygon(info['probs'], self.args['n_clusters'], 
-                    self.display_polygon.axes, 
+        PlotPolygon(info['probs'], self.args['n_clusters'],
+                    self.display_polygon.axes,
                     "Epoch {}".format(info['epoch']))
         self.display_polygon.draw()
-              
+
     def get_FASTA_file(self):
         # Check that is not empty and that is a FASTA file !!!!!!!!!!!!!
         self.FASTA_fname = QtWidgets.QFileDialog.getOpenFileName()
@@ -998,14 +979,14 @@ class Ui_MainWindow(object):
 
     def reset_to_default(self):
         self.input_n_epochs.setValue(35)
-        self.input_n_mimics.setValue(3) 
+        self.input_n_mimics.setValue(3)
         self.input_n_clusters.setValue(5)
         self.input_k.setValue(6)
-        #self.input_optimizer.setValue("Adam")
+        # self.input_optimizer.setValue("Adam")
         self.input_batch_sz.setValue(252)
         self.input_lambda.setText("2.8")
         self.input_noise.setValue(0)
-    
+
     def save_results_file(self):
         filename = QtWidgets.QFileDialog.getSaveFileName(self.Results_tab, 'Save File', '', 'CSV(*.tsv)')[0]
         if filename:
@@ -1020,13 +1001,12 @@ class Ui_MainWindow(object):
                         else:
                             rowdata.append('')
                     writer.writerow(rowdata)
-        
-    #def save_model():
-    
+
 
 if __name__ == "__main__":
     import sys
     import breeze_resources
+
     app = QtWidgets.QApplication(sys.argv)
 
     # set stylesheet

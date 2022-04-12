@@ -446,3 +446,22 @@ def plot_confusion_matrix(cm,
     # plt.tight_layout()
     ax.set_ylabel('True label')
     ax.set_xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+
+from collections import namedtuple
+ModeResult = namedtuple('ModeResult', ('mode', 'count'))
+def mode_rand(a, axis):
+    in_dims = list(range(a.ndim))
+    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis+1:] + [axis])
+
+    inds = np.ndindex(a_view.shape[:-1])
+    modes = np.empty(a_view.shape[:-1], dtype=a.dtype)
+    counts = np.zeros(a_view.shape[:-1], dtype=np.int32)
+
+    for ind in inds:
+        vals, cnts = np.unique(a_view[ind], return_counts=True)
+        maxes = np.where(cnts == cnts.max())
+        modes[ind], counts[ind] = vals[np.random.choice(maxes[0])], cnts.max()
+
+    newshape = list(a.shape)
+    newshape[axis] = 1
+    return ModeResult(modes.reshape(newshape), counts.reshape(newshape))
