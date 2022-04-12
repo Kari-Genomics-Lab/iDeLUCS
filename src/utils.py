@@ -23,8 +23,8 @@ class FastaEntry:
     """One single FASTA entry. Instantiate with string header and bytearray
     sequence."""
 
-    basemask = bytearray.maketrans(b'acgtuUswkmyrbdhvnSWKMYRBDHV',
-                                   b'ACGTTTNNNNNNNNNNNNNNNNNNNNN')
+    basemask = bytearray.maketrans(b'acgtuUswkmyrbdhvnSWKMYRBDHV-',
+                                   b'ACGTTTNNNNNNNNNNNNNNNNNNNNNN')
     __slots__ = ['header', 'sequence']
 
     def __init__(self, header, sequence):
