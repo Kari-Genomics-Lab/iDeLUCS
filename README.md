@@ -35,7 +35,7 @@ python iDeLUCS.py <sequence_file> --GT_file --n_epochs --lambda --k --n_clusters
 # Examples
 Clustering the Vertebrates dataset
 ```
-python iDeLUCS.py Example/FASTA.fas --GT_file=Example/GT.tsv --n_epochs=30 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
+python iDeLUCS.py Example/FASTA.fas --GT_file=Example/GT.tsv --n_epochs=50 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
 ```
 
 Clustering an unkown datasatet with Protists
