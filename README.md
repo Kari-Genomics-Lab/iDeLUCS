@@ -51,17 +51,18 @@ python iDeLUCS.py <sequence_file>
 
 ### Clustering parameters
 
-Argument Name| Argument Type | Argument Description | Argument Options
+Argument Name| Variable Type | Description | Options
 --- | --- | --- | --- 
---n_clusters| integer | Expected or Maximum number of clusters | Default = 5 ; Range: 2-100
---n_epochs| integer |  | Default = 50 ; Recommended Range: 50-150
---n_mimics | integer | | Default = 50 ; Recommended Range: 50-150
---batch_sz | integer | | Default = 3; Recommended Range: 0-600. Note: This value might be limited by the capacity of your machine. 
---GT_file | string | | Default = None.
---k| integer| |  Default = 6, Options: Any integer greater than slice_start and up to the length of the input reference sequence
---optimizer | string | Options: SGD, Adam, RMSprop
---lambda| Float |  | Default = 2.8; Recommended Range  1 (Highly Imbalanced dataset) - 4 (Perfectly Balanced dataset)
---noise |integer | | Default = 1 (keep all non-syn. mutations) ; Recommended Range: 10 -20 
+<sequence_file>| string | Path for single Fasta file with training sequences | Required to run the program. 
+--GT_file | string | Path for tab separated file with possible labels for the training dataset. This labels wont be used during trainig, just for post-hoc analysis. The GT file must containg the columns: `sequence_id` with the sequence identifiers, these identifiers must correspond to the identifiers provided in the `<sequence_file>`. The column `cluster_id` with the "ground truth" assignments for each sequence. Additionally, the user may include an additional column with an alternaitve labelling under the header `phylogeny` | Default = None.
+--k| integer|k-mer length|  Default = 6, Options:`[4,5,6]`
+--n_clusters| integer|Expected or maximum number of clusters to find. It should be at least `n_true_clusters` when `GT_file` is provided' | Default = 5 ; Range: 2-100
+--n_epochs| integer | Number of training epochs. An epoch is defined as a training iteration over all the training pairs.' | Default: `50` ; Recommended Range: `[50,150]`
+--n_mimics | integer | Number of data augmentations per sequence that will be considered during training | Default = 50 ; Recommended Range: 50-150
+--batch_sz | integer | Number of data pairs that the network will receive simultaneouly during training. A larger batch may improve convergence but it may harm the accuracy. It must be a multiple of `n_mimcs`.| Default: 3; Recommended Range: 0-600. **Note**: This value might be limited by the capacity of your machine. 
+--optimizer | string | Optimizatin algorithm to train the neural network | `['SGD', 'Adam','RMSprop']`
+--lambda| float | Hyperparameter to control cluster balance. | Default = 2.8; Recommended Range  1 (highly imbalanced dataset) - 3 (perfectly balanced dataset)
+--noise |integer | Addition of noise to the network parameters to prevent overfitting This parameter indicates the frequency of noise introduction during training.| Default = 1 (keep all non-syn. mutations) ; Recommended Range: 10 -20.  **Note**: Use noise: `0` for no noise during training
 
 ## Example datasets
 We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels.
