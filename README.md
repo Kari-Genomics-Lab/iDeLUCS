@@ -35,21 +35,9 @@ $ python iDeLUCS.py -h
 Pending ....
 
 
-## Usage
-iDeLUCS assigns a cluster identifier to all the DNA sequences present in a sigle FASTA file. The path to this file must be provided as input in both the CLI and the GUI versions of iDeLUCS. There are several hyperparameters that are required to perform the clustering. The user may use the default values or select a specific one depending on the amount of information that is available about the dataset. 
-
-### Clustering your own sequences
-GUI: 
-```
-python DeLUCS_GUI.py
-```
-
-For command line application: 
-```
-python iDeLUCS.py <sequence_file>
-```
-
 ### Clustering parameters
+
+iDeLUCS assigns a cluster identifier to all the DNA sequences present in a sigle FASTA file. The path to this file must be provided as input in both the CLI and the GUI versions of iDeLUCS. There are several hyperparameters that are required to perform the clustering. The user may use the default values or select a specific one depending on the amount of information that is available about the dataset. 
 
 Argument Name| Variable Type | Description | Options
 --- | --- | --- | --- 
@@ -75,4 +63,15 @@ python iDeLUCS.py Example/FASTA.fas --GT_file=Example/GT.tsv --n_epochs=50 --lam
 Clustering an unkown datasatet with Protists
 ```
 python iDeLUCS.py Example/FASTA_no_labels.fas --n_epochs=30 --lambda=1.2 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=360
+```
+
+### Clustering your own sequences
+GUI: 
+```
+python DeLUCS_GUI.py
+```
+
+For command line application: 
+```
+python iDeLUCS.py <sequence_file>
 ```
