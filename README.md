@@ -4,7 +4,7 @@
 
 
 
-An interactive deep-leraning based tool for clustering of genomic sequences.
+An interactive deep-leraning based tool for clustering genomic sequences.
 
 ## Installation via CLI (Linux and macOS)
 
