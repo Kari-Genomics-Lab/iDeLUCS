@@ -8,7 +8,7 @@ An interactive deep-leraning based tool for clustering genomic sequences.
 
 ## Installation via CLI (Linux and macOS)
 
-The installation via command-line interface requires [git](https://git-scm.com/) and [pip](https://pypi.org/project/pip/) installed. After making sure you have them installed on your machine:
+The installation via command-line interface requires [git](https://git-scm.com/) and [pip](https://pypi.org/project/pip/) installed. Follow the steps after making sure you have them installed on your machine.
 
 0. (**Optional**) Create and activate a new virtual environment
 ```
