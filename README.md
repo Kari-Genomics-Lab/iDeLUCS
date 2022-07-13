@@ -26,6 +26,8 @@ $ git clone https://github.com/millanp95/iDeLUCS.git .
 $ cd iDeLUCS-master
 $ pip install -r requirements.txt 	
 ```
+**Note:** iDeLUCS uses PyTorch as the machine learning development framework. Its latest stable release might not be compatible with your version of CUDA.  
+
 3. Test installation
 ```
 $ python iDeLUCS.py -h 	
