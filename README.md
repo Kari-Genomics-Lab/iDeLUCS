@@ -76,5 +76,5 @@ python DeLUCS_GUI.py
 
 For command line application: 
 ```
-python iDeLUCS.py <sequence_file>
+python iDeLUCS.py --sequence_file=<your_FASTA> --GT_file=<your_GT.tsv> --n_clusters=5 --n_epochs=60 --n_voters=5
 ```
