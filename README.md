@@ -14,7 +14,8 @@ The installation via command-line interface requires [git](https://git-scm.com/)
 ```
 $ mkdir iDeLUCS
 $ cd iDeLUCS # go to project folder
-$ python -m venv myEnv
+$ python -m venv dev_iDeLUCS
+$ source dev_iDeLUCS/bin/activate
 ```
 
 1. Clone this repository
