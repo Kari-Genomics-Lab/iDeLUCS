@@ -1015,6 +1015,7 @@ class Ui_MainWindow(object):
         if self.GT_fname:
             self.UMAP_Button.setVisible(True)
             self.CM_Button.setVisible(True)
+
             self.confussion_matrix = info['w']
             self.unique_labels = info['unique_labels']
             plot_confusion_matrix(self.confussion_matrix, self.unique_labels, pairs=None, ax=self.display_results.axes, normalize=False)
@@ -1025,6 +1026,12 @@ class Ui_MainWindow(object):
 
             self.DB_Index.setText(f"Davies-Boulding: {self.results['Davies-Boulding']}")
             self.Silhouette.setText(f"Silhouette: {self.results['Silhouette-Score']}")
+
+            self.DB_Index.setVisible(True)
+            self.Silhouette.setVisible(True)
+            self.DB_Index.setText(f"Davies-Boulding: {round(self.results['Davies-Boulding'],3)}")
+            self.Silhouette.setText(f"Silhouette: {round(self.results['Silhouette-Score'],3)}")
+            self.Silhouette.setVisible(True)
 
 
             scatter = self.display_results.axes.scatter(self.embedded [:, 0], self.embedded [:, 1], s=4, c=info['assignments'].astype(np.int32))
@@ -1052,11 +1059,7 @@ class Ui_MainWindow(object):
         self.widget_display_results.setObjectName("display_results")
         self.widget_display_results.setLayout(layout)
 
-        self.DB_Index.setVisible(True)
-        self.Silhouette.setVisible(True)
-        self.DB_Index.setText(f"Davies-Boulding: {round(self.results['Davies-Boulding'],3)}")
-        self.Silhouette.setText(f"Silhouette: {round(self.results['Silhouette-Score'],3)}")
-        self.Silhouette.setVisible(True)
+        
 
         self.progress_info.setText("Results are ready")
         self.tabWidget.setTabEnabled(2, True)
