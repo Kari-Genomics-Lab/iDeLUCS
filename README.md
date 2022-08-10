@@ -34,10 +34,6 @@ $ pip install -r requirements.txt
 $ python iDeLUCS.py -h 	
 ```
 
-## Installation (Windows)
-Pending ....
-
-
 ### Clustering parameters
 
 iDeLUCS assigns a cluster identifier to all the DNA sequences present in a sigle FASTA file. The path to this file must be provided as input in both the CLI and the GUI versions of iDeLUCS. There are several hyperparameters that are required to perform the clustering. The user may use the default values or select a specific one depending on the amount of information that is available about the dataset. 
