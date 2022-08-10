@@ -6,11 +6,11 @@
 
 An interactive deep-leraning based tool for clustering genomic sequences.
 
-## Installation via CLI (Linux and macOS)
+## Installation
 
-The installation via command-line interface requires [git](https://git-scm.com/) and [pip](https://pypi.org/project/pip/) installed. Follow the steps after making sure you have them installed on your machine.
+The installation is via command-line interface and it requires [git](https://git-scm.com/) and [pip](https://pypi.org/project/pip/) installed. Follow the steps after making sure you have them installed on your machine.
 
-0. (**Optional**) Create and activate a new virtual environment
+0. (**Optional**) Create and activate a new virtual environment using [venv](https://docs.python.org/3/library/venv.html)
 ```
 $ mkdir iDeLUCS
 $ cd iDeLUCS # go to project folder
