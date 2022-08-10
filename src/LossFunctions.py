@@ -1,21 +1,11 @@
 import sys
+import numpy as np
 import torch
-
+from torch.utils.data import Dataset
 import torch.nn as nn
 import torch.nn.functional as F
-
-
-global label_dtype
-global dtype
-
-dtype = torch.FloatTensor
-label_dtype = torch.LongTensor
-
-device = 'cpu'
-if torch.cuda.is_available():
-    device = 'cuda'
-    dtype = torch.cuda.FloatTensor
-    label_dtype = torch.cuda.LongTensor
+from torch.autograd import Variable
+import math
 
 def IID_loss(x_out, x_tf_out, lamb=1.0, EPS=sys.float_info.epsilon):
     # Impolementation of the IID loss function found in the paper:
@@ -82,7 +72,7 @@ def info_nce_loss(z1,z2, temperature):
     negatives = similarity_matrix[~labels.bool()].view(similarity_matrix.shape[0], -1)
 
     logits = torch.cat([positives, negatives], dim=1)
-    labels = torch.zeros(logits.shape[0]).type(label_dtype)
+    labels = torch.zeros(logits.shape[0]).type(torch.cuda.LongTensor)
 
     logits = logits / temperature
     loss = criterion(logits, labels)

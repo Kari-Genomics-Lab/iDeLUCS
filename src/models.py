@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 sys.path.append('src/')
+sys.path.append('../src/')
 
 from LossFunctions import IID_loss, info_nce_loss
 from torch.utils.data import DataLoader
@@ -57,10 +58,12 @@ class IID_model():
     def __init__(self, args: dict):
 
         self.sequence_file = args['sequence_file']
-        self.n_clusters =  args['n_clusters']
         self.GT_file = args['GT_file']
 
+        #self.names, self.lengths, self.GT, self.cluster_dis = SummaryFasta(self.sequence_file, 
+        #                                                                           self.GT_file)
 
+        #
         self.k = args['k']
         
         if args['model_size'] == 'linear':
@@ -102,12 +105,12 @@ class IID_model():
         else:
             raise ValueError("Optimizer not supported")
 
-        print("Number of Trainable Parameters: ", sum(p.numel() for p in self.net.parameters() if p.requires_grad))
+        #print("Number of Trainable Parameters: ", sum(p.numel() for p in self.net.parameters() if p.requires_grad))
         
         if self.schedule == 'Plateau':
             self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'min')
-        elif self.optimizer == 'Triangle':
-            self.schedule = optim.lr_scheduler.CyclicLR(self.optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5, mode="triangular2")
+        elif self.schedule == 'Triangle':
+            self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5, mode="triangular2")
 
         
         #self.writer = SummaryWriter()
@@ -156,7 +159,7 @@ class IID_model():
         
         if self.schedule == 'Plateau':
             self.scheduler.step(running_loss)
-        elif self.optimizer == 'Triangle':
+        elif self.schedule == 'Triangle':
             self.scheduler.step()
 
         # if self.epoch % 30 == 0 and self.epoch != 0:
@@ -186,7 +189,7 @@ class IID_model():
             z1, h1 = self.net(sample)
             z2, h2 = self.net(modified_sample)
 
-            loss = (1-self.weight)*info_nce_loss(h1, h2, 0.8) + (self.weight)*IID_loss(z1, z2, lamb=self.l)
+            loss = (1-self.weight)*info_nce_loss(h1, h2, 0.85) + (self.weight)*IID_loss(z1, z2, lamb=self.l)
             loss.backward()
             self.optimizer.step()
 
@@ -196,7 +199,7 @@ class IID_model():
 
         if self.schedule == 'Plateau':
             self.scheduler.step(running_loss)
-        elif self.optimizer == 'Triangle':
+        elif self.schedule == 'Triangle':
             self.scheduler.step()
         self.epoch += 1
 
