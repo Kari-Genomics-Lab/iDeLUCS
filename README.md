@@ -1,5 +1,5 @@
 <p align="center">
-  <img src ="new_logo.png" alt="drawing" width="800"/>
+  <img src ="iDeLUCS_logo.png" alt="drawing" width="800"/>
 </p>
 
 
