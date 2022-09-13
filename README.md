@@ -49,7 +49,7 @@ Argument Name| Variable Type | Description | Options
 --batch_sz | integer | Number of data pairs the network will receive simultaneously during training. A larger batch may improve convergence but it may harm the accuracy. It must be a multiple of `n_mimcs`.| Default: 3; Recommended Range: 0-600. **Note**: This value might be limited by the capacity of your machine. 
 --optimizer | string | Optimization algorithm to train the neural network | `['SGD', 'Adam','RMSprop']`
 --lambda| float | Hyperparameter to control cluster balance. | Default = 2.8; Recommended Range  1 (highly imbalanced dataset) - 3 (perfectly balanced dataset)
---noise |integer | Addition of noise to the network parameters to prevent overfitting This parameter indicates the frequency of noise introduction during training.| Default = 1 (keep all non-syn. mutations) ; Recommended Range: 10 -20.  **Note**: Use noise: `0` for no noise during training
+--scheduler |string | Learning Rate Scheduling algorithm to train the neural network | `['None', 'Plateau','Triangle']`
 
 ## Example datasets
 We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels.
