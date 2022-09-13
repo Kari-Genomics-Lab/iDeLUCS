@@ -1,5 +1,5 @@
 <p align="center">
-  <img src ="iDeLUCS_logo.png" alt="drawing" width="800"/>
+  <img src ="itallics_iDeLUCS_logo.png" alt="drawing" width="800"/>
 </p>
 
 
@@ -49,28 +49,28 @@ Argument Name| Variable Type | Description | Options
 --batch_sz | integer | Number of data pairs the network will receive simultaneously during training. A larger batch may improve convergence but it may harm the accuracy. It must be a multiple of `n_mimcs`.| Default: 3; Recommended Range: 0-600. **Note**: This value might be limited by the capacity of your machine. 
 --optimizer | string | Optimization algorithm to train the neural network | `['SGD', 'Adam','RMSprop']`
 --lambda| float | Hyperparameter to control cluster balance. | Default = 2.8; Recommended Range  1 (highly imbalanced dataset) - 3 (perfectly balanced dataset)
---scheduler |string | Learning Rate Scheduling algorithm to train the neural network | `['None', 'Plateau','Triangle']`
 
 ## Example datasets
 We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels.
 
 ### Running example datasets
 ```
-python iDeLUCS.py Example/Vertebrata.fas --GT_file=Example/Vertebrata_GT.tsv --n_epochs=50 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
+python iDeLUCS.py Example/FASTA.fas --GT_file=Example/GT.tsv --n_epochs=50 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
 ```
 
 Clustering an unkown datasatet with Protists
 ```
-python iDeLUCS.py Example/Actinopterygii.fas --n_epochs=30 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=256
+python iDeLUCS.py Example/FASTA_no_labels.fas --n_epochs=30 --lambda=1.2 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=360
 ```
 
 ### Clustering your own sequences
 GUI: 
 ```
-python DeLUCS_GUI.py
+python GUI_iDeLUCS.py
 ```
 
 For command line application: 
 ```
 python iDeLUCS.py --sequence_file=<your_FASTA> --GT_file=<your_GT.tsv> --n_clusters=5 --n_epochs=60 --n_voters=5
+```
 ```

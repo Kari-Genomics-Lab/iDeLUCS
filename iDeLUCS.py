@@ -1,5 +1,3 @@
-#python Voting_DeLUCS.py FASTA.fas --GT_file=GT.tsv --n_epochs=30 --lambda=1.2 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=240
-
 import pandas as pd
 import os
 from src import models
@@ -8,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from src.utils import SummaryFasta, plot_confusion_matrix, \
                       label_features, compute_results
+
 import argparse
 import torch
 import sys
@@ -27,17 +26,33 @@ def weights_init(m):
 def run(args):
 
     now = time.asctime()
-    time_stamp = '_'.join(now.split(' ')[1:4])
+    time_stamp = now.split(' ')
+    hour = now.split(' ')[3]
+    time_stamp[3] = '-'.join(hour.split(':'))
+    time_stamp = '_'.join(time_stamp[1:4])
 
-    if not os.path.isdir('Results'):
-        os.mkdir('Results')
+    folder_name = os.getcwd()
+    folder_name = f'{folder_name}/Results'
 
-    if not os.path.isdir(f'Results/{time_stamp}'):
-        os.mkdir(f'Results/{time_stamp}')
+    if not os.path.isdir(folder_name):
+        os.mkdir(folder_name)
+
+    if not os.path.isdir(f'{folder_name}/{time_stamp}'):
+        os.mkdir(f'{folder_name}/{time_stamp}')
 
     model = models.IID_model(args)
     model.names, model.lengths, model.GT, model.cluster_dis = SummaryFasta(model.sequence_file,
                                                                            model.GT_file)
+    print(model.cluster_dis)
+    stats = {"n_seq": len(model.lengths),
+            "min_len": np.min(model.lengths),
+            "max_len": np.max(model.lengths),
+            "avg_len": np.mean(model.lengths)}
+
+    print( f'No. Sequences: \t {stats["n_seq"]:,}')
+    print(f'Min. Length: \t {stats["min_len"]:,}')
+    print(f'Max. Length: \t {stats["max_len"]:,}')
+    print(f'Avg. Length: \t {round(stats["avg_len"],2):,}')
     model.build_dataloader()
     predictions = []
     
@@ -75,9 +90,9 @@ def run(args):
 
         display_training.plot(model_loss, label=f'Model {voter+1}')
         display_training.axes.legend(loc=1)
-        training_figure.savefig(f'Results/{time_stamp}/training_plots.jpg')
+        training_figure.savefig(f'{folder_name}/{time_stamp}/training_plots.jpg')
 
-    y_pred = label_features(np.array(predictions), args['n_clusters'])
+    y_pred, probabilities = label_features(np.array(predictions), args['n_clusters'])
 
     #--------------------- Computing and Saving the Results
     sys.stdout.write(f"\r........... Computing Results ................")
@@ -118,13 +133,13 @@ def run(args):
                               probabilities[:,np.newaxis]), axis=1)
 
     df = pd.DataFrame(data, columns=['sequence_id','assignment','confidence_score'])
-    df.to_csv(f'Results/{time_stamp}/assignments.tsv',sep='\t')
+    df.to_csv(f'{folder_name}/{time_stamp}/assignments.tsv',sep='\t')
 
     df=pd.Series(results, name='Value')
-    df.to_csv(f'Results/{time_stamp}/metrics.tsv',sep='\t')
+    df.to_csv(f'{folder_name}/{time_stamp}/metrics.tsv',sep='\t')
 
     if fig != None:
-        fig.savefig(f'Results/{time_stamp}/contingency_matrix.jpg')
+        fig.savefig(f'{folder_name}/{time_stamp}/contingency_matrix.jpg')
 
     # ------------------------------- Computing and Saving the Representations
     
@@ -149,7 +164,7 @@ def run(args):
                s=1,
                cmap='Spectral')
     plt.show()
-    fig.savefig(f'Results/{time_stamp}/learned_representation.jpg')
+    fig.savefig(f'{folder_name}/{time_stamp}/learned_representation.jpg')
     
 def main():
     parser= argparse.ArgumentParser()
@@ -157,12 +172,12 @@ def main():
     parser.add_argument('--n_clusters', action='store',type=int,default=5)
     parser.add_argument('--n_epochs', action='store',type=int,default=100)
     parser.add_argument('--n_mimics', action='store',type=int,default=3)
-    parser.add_argument('--batch_sz', action='store',type=int,default=512)
+    parser.add_argument('--batch_sz', action='store',type=int,default=256)
     parser.add_argument('--GT_file', action='store',type=str,default=None)
     parser.add_argument('--k', action='store',type=int,default=6)
     parser.add_argument('--optimizer', action='store',type=str,default="RMSprop")
-    parser.add_argument('--scheduler', action='store',type=str,default="Triangle")
-    parser.add_argument('--weight', action='store',type=float,default=1.0)
+    parser.add_argument('--scheduler', action='store',type=str,default="None")
+    parser.add_argument('--weight', action='store',type=float,default=0.25)
     parser.add_argument('--lambda', action='store',type=float,default=2.8)
     parser.add_argument('--lr', action='store',type=float,default=1e-3)
     parser.add_argument('--n_voters', action='store',type=int, default=5)

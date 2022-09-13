@@ -1,16 +1,7 @@
-################ I CHANGED THE LEARNING RATE  ---------------------------
-#lr=5e-4
-
 import sys
 import torch
 import random
-import math
 import numpy as np
-import time
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib import cm
-
 import torch.nn as nn
 import torch.optim as optim
 
@@ -20,10 +11,9 @@ sys.path.append('../src/')
 from LossFunctions import IID_loss, info_nce_loss
 from torch.utils.data import DataLoader
 from PytorchUtils import NetLinear, myNet
-from ResNet import ConvNet, ResNet18
+from ResNet import ResNet18
 
-from utils import SequenceDataset, create_dataloader, \
-                  SummaryFasta
+from utils import SequenceDataset, create_dataloader
 
 # Random Seeds for reproducibility.
 torch.manual_seed(0)
@@ -60,10 +50,7 @@ class IID_model():
         self.sequence_file = args['sequence_file']
         self.GT_file = args['GT_file']
 
-        #self.names, self.lengths, self.GT, self.cluster_dis = SummaryFasta(self.sequence_file, 
-        #                                                                           self.GT_file)
-
-        #
+        self.n_clusters = args['n_clusters']
         self.k = args['k']
         
         if args['model_size'] == 'linear':
@@ -104,27 +91,17 @@ class IID_model():
             self.optimizer = optim.Adam(self.net.parameters(), lr=self.lr)
         else:
             raise ValueError("Optimizer not supported")
-
-        #print("Number of Trainable Parameters: ", sum(p.numel() for p in self.net.parameters() if p.requires_grad))
         
         if self.schedule == 'Plateau':
             self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, 'min')
         elif self.schedule == 'Triangle':
             self.scheduler = optim.lr_scheduler.CyclicLR(self.optimizer, base_lr=0.001, max_lr=0.1,step_size_up=5, mode="triangular2")
-
-        
-        #self.writer = SummaryWriter()
-    
-        #print(self.net)
-        #print("Number of Trainable Parameters: ", 
-        #      sum(p.numel() for p in self.net.parameters() if p.requires_grad))
         
     def build_dataloader(self):
         #Data Files
         data_path = self.sequence_file
         GT_file = self.GT_file
                 
-        #Define the mutations for the data augmentations --> Should we augment the original data too? 
         self.dataloader = create_dataloader(data_path, 
                                              self.n_mimics, 
                                              k=self.k, 
@@ -132,45 +109,6 @@ class IID_model():
                                              GT_file=GT_file,
                                              reduce=self.reduce)
 
-    def unsupervised_training_epoch(self):
-        n_features = self.n_features
-        batch_size = self.batch_sz
-        k = self.k 
-        self.net.train()
-        running_loss = 0.0
-
-        for i_batch, sample_batched in enumerate(self.dataloader):
-            sample = sample_batched['true'].view(-1, 1, 2 ** k, 2 ** k).type(dtype)
-            modified_sample = sample_batched['modified'].view(-1, 1, 2 ** k, 2 ** k).type(dtype)
-            
-            # zero the gradients
-            self.optimizer.zero_grad()
-
-            # forward + backward + optimize
-            z1, h1 = self.net(sample)
-            z2, h2 = self.net(modified_sample)
-
-            loss = IID_loss(z1, z2, lamb=self.l) #+ info_nce_loss(h1, h2, 1)
-            loss.backward()
-            self.optimizer.step()
-            running_loss += loss
-            
-        running_loss /= i_batch
-        
-        if self.schedule == 'Plateau':
-            self.scheduler.step(running_loss)
-        elif self.schedule == 'Triangle':
-            self.scheduler.step()
-
-        # if self.epoch % 30 == 0 and self.epoch != 0:
-        #     with torch.no_grad():
-        #         for param in self.net.parameters():
-        #             param.add_(torch.randn(param.size()).type(dtype) * 0.09)
-
-        self.epoch += 1
-        #print(f'Epoch: {self.epoch} \t Loss: {running_loss}')
-        return running_loss.item()
-    
     def contrastive_training_epoch(self):
         n_features = self.n_features
         batch_size = self.batch_sz
@@ -247,7 +185,6 @@ class IID_model():
         with torch.no_grad():
             self.net.eval()
             for test in test_dataloader:
-                #kmers = test['kmer'].view(-1, 1, 2** self.k, 2 ** self.k).type(dtype)
                 kmers = test['kmer'].view(-1, 1, n_features).type(dtype)
 
                 #calculate the prediction by running through the network

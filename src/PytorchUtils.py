@@ -1,5 +1,4 @@
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -16,11 +15,11 @@ class myNet(nn.Module):
                 nn.LeakyReLU()
         )
         
-        self.instance = nn.Linear(128, 64)  # Always check n_input here.
+        self.instance = nn.Linear(128, 64) 
         
         self.classifier = nn.Sequential(
                 nn.Dropout(p=0.5),
-                nn.Linear(128, n_output),  # Always check n_input here.
+                nn.Linear(128, n_output),  
                 nn.Softmax(dim=1)
         )
             
@@ -36,7 +35,7 @@ class NetLinear(nn.Module):
         super(NetLinear, self).__init__()
         self.n_input = n_input
         self.layers  = nn.Sequential(
-            #nn.BatchNorm1d(n_input, eps=1e-14),
+
             nn.Linear(n_input, 512),
             nn.ReLU(),
             nn.Dropout(p=0.5),
@@ -46,7 +45,7 @@ class NetLinear(nn.Module):
         self.classifier = nn.Sequential(
             nn.ReLU(),
             nn.Dropout(p=0.5),
-            nn.Linear(64, n_output),  # Always check n_input here.
+            nn.Linear(64, n_output),  
             nn.Softmax(dim=1)
         )
 

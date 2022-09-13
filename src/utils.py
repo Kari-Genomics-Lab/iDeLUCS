@@ -3,13 +3,13 @@ sys.path.append('src/')
 import pyximport 
 pyximport.install()
 
-from kmers import kmer_counts, cgr
+from kmers import kmer_counts
 
 import random, itertools
-from datetime import datetime
-import os as os
 import numpy as np
 import pandas as pd
+import sklearn.metrics.cluster as metrics
+from sklearn.cluster import KMeans
 
 import torch 
 from torch.utils.data import Dataset, DataLoader
@@ -17,9 +17,6 @@ from torch.utils.data import DataLoader
 
 from scipy.optimize import linear_sum_assignment
 from sklearn.preprocessing import StandardScaler
-import sklearn.metrics.cluster as metrics
-from sklearn.cluster import KMeans
-from collections import namedtuple
 
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
@@ -50,25 +47,6 @@ def check_sequence(header, seq):
         msg = "Invalid DNA byte in sequence {}: '{}'"
         raise ValueError(msg.format(header, bad_character))
     
-class Random_N(object):
-    """
-    Mutate Genomic sequence using transitions only.
-    :param seq: Original Genomic Sequence.
-    :param threshold: probability of Transition.
-    :return: Mutated Sequence.
-    """
-
-    def __init__(self, n_bp):
-        self.n_bp = n_bp
-        
-    def __call__(self, seq):
-    
-        N = ord('N')
-
-        index = np.random.randint(0, len(seq), self.n_bp)
-        for i in index:
-            seq[i] = N
-
     
 class transition(object):
     """
@@ -92,9 +70,26 @@ class transition(object):
 
         for i in index:
             #print(chr(seq[i]), '->', chr(mutations[seq[i]]))
-            seq[i] = mutations.get(seq[i], N)
+            seq[i] = mutations[mutations.get(seq[i], N)]
 
+class Random_N(object):
+    """
+    Mutate Genomic sequence using transitions only.
+    :param seq: Original Genomic Sequence.
+    :param threshold: probability of Transition.
+    :return: Mutated Sequence.
+    """
 
+    def __init__(self, n_bp):
+        self.n_bp = n_bp
+        
+    def __call__(self, seq):
+    
+        N = ord('N')
+
+        index = np.random.randint(0, len(seq), self.n_bp)
+        for i in index:
+            seq[i] = N
 
 
 class transversion(object):
@@ -117,10 +112,9 @@ class transversion(object):
         mutations = {A:[T,C],  G:[T,C], T:[A,G], C:[A,G], N:[N]}
 
         for i in index:
-            #print(chr(seq[i]), '->', chr(random.choice(mutations[seq[i]])))
             seq[i] = random.choice(mutations.get(seq[i], [N]))            
             
-class composition(object):
+class transition_transversion(object):
     """
     Mutate Genomic sequence (in binary) using both transitions 
     and transversions.
@@ -128,16 +122,14 @@ class composition(object):
     :param threshold: Probability of Transversion.
     :return: Mutated Sequence.
     """
-    def __init__(self, threshold_1, threshold_2, n):
+    def __init__(self, threshold_1, threshold_2):
         self.tf1 = transition(threshold_1)
         self.tf2 = transversion(threshold_2)
-        self.tf3 = Random_N(n)
         
     def __call__(self, seq):
 
         self.tf1(seq)
         self.tf2(seq)
-        self.tf3(seq)
     
 def SummaryFasta(fname, GT_file=None):
     lines = list()
@@ -165,7 +157,7 @@ def SummaryFasta(fname, GT_file=None):
                     raise ValueError('Check GT for sequence {}'.format(seq_id))
 
                 check_sequence(seq_id, seq)
-                names.append(seq_id)  #seq_id
+                names.append(seq_id)
                 lengths.append(len(seq))
 
                 if GT_file:
@@ -184,7 +176,7 @@ def SummaryFasta(fname, GT_file=None):
 
     seq = bytearray().join(lines)
     check_sequence(seq_id, seq)
-    names.append(seq_id[1:-1]) #seq_id[1:-1]
+    names.append(seq_id) 
     lengths.append(len(seq))
 
     if GT_file:
@@ -205,7 +197,7 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
         elif line.startswith(b'>'):
             if seq_id != "":
                 seq = bytearray().join(lines)
-                names.append(seq_id)  #seq_id
+                names.append(seq_id)  
                             
                 if transform:
                     transform(seq)
@@ -223,7 +215,7 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
             lines += [line.strip()]
   
     seq = bytearray().join(lines)
-    names.append(seq_id[1:-1]) #seq_id[1:-1]
+    names.append(seq_id)
     if transform:
         transform(seq)
         
@@ -244,39 +236,32 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
 
     train_features = []
     start = time.time()
-    TRANSFORM = composition(1e-3, 0.5e-3, 20)
 
     # Compute Features and save original data for testing.
-    #sys.stdout.write(f'\r............computing augmentations (0/{n_mimics})................')
-    #sys.stdout.flush()
-    _, t_norm = kmersFasta(sequence_file, k=k, transform=TRANSFORM, reduce=reduce)
+    sys.stdout.write(f'\r............computing augmentations (0/{n_mimics})................')
+    sys.stdout.flush()
+    _, t_norm = kmersFasta(sequence_file, k=k, transform=transition_transversion(1e-2, 0.5e-2), reduce=reduce)
     t_norm.resize(t_norm.shape[0],1,t_norm.shape[1])
     
     
-    #sys.stdout.write(f'\r............computing augmentations (1/{n_mimics})................')
-    #sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=TRANSFORM, reduce=reduce)
+    sys.stdout.write(f'\r............computing augmentations (1/{n_mimics})................')
+    sys.stdout.flush()
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transition(1e-2), reduce=reduce)
     t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
-    #sys.stdout.write(f'\r............computing augmentations (2/{n_mimics})................')
-    #sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=TRANSFORM, reduce=reduce)
+    sys.stdout.write(f'\r............computing augmentations (2/{n_mimics})................')
+    sys.stdout.flush()
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce)
     t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     for j in range(n_mimics-2):
-        #sys.stdout.write(f'\r............computing augmentations ({3+j}/{n_mimics})................')
-        #sys.stdout.flush()
-        _, t_mutated = kmersFasta(sequence_file, k=k, transform=TRANSFORM, reduce=reduce)
+        sys.stdout.write(f'\r............computing augmentations ({3+j}/{n_mimics})................')
+        sys.stdout.flush()
+        _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce)
         t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
         train_features.extend(np.concatenate((t_norm, t_mutated), axis=1)) 
-
-    #sys.stdout.write(f'\r............computing augmentations ({j+1}/{n_mimics})................')
-    #sys.stdout.flush()
-    #_, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(10))
-    #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
-    #train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))      
 
     x_train = np.array(train_features).astype('float32')
     x_test = np.reshape(t_norm, (-1, t_norm.shape[-1])).astype('float32')
@@ -439,6 +424,8 @@ def plot_confusion_matrix(cm,
                           cmap=None,
                           normalize=False,
                           ax=None):
+
+    
     if not isinstance(pairs, np.ndarray):
         accuracy = np.trace(cm)
     else:
@@ -475,30 +462,15 @@ def plot_confusion_matrix(cm,
                     horizontalalignment="center",
                     color="white" if cm[i, j] > thresh else "black")
 
-    # plt.tight_layout()
     ax.set_ylabel('True label')
     ax.set_xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
 
 
-ModeResult = namedtuple('ModeResult', ('mode', 'count'))
-def mode_rand(a, axis):
-    in_dims = list(range(a.ndim))
-    a_view = np.transpose(a, in_dims[:axis] + in_dims[axis+1:] + [axis])
-
-    inds = np.ndindex(a_view.shape[:-1])
-    modes = np.empty(a_view.shape[:-1], dtype=a.dtype)
-    counts = np.zeros(a_view.shape[:-1], dtype=np.int32)
-
-    for ind in inds:
-        vals, cnts = np.unique(a_view[ind], return_counts=True)
-        maxes = np.where(cnts == cnts.max())
-        modes[ind], counts[ind] = vals[np.random.choice(maxes[0])], cnts.max()
-
-    newshape = list(a.shape)
-    newshape[axis] = 1
-    return ModeResult(modes.reshape(newshape), counts.reshape(newshape))
-
+from sklearn.metrics.pairwise import euclidean_distances
 def label_features(predictions, n_clusters):
+    """
+    Clustering Ensemble 
+    """
     cluster = KMeans(n_clusters=n_clusters, init='k-means++')
     features = np.zeros((predictions.shape[1], predictions.shape[0]*n_clusters))
 
@@ -508,8 +480,16 @@ def label_features(predictions, n_clusters):
             features[y_pred==j, i*n_clusters + j] = 1.
 
     _sums = np.sum(features, axis=0) / predictions.shape[1]
+        
     y = cluster.fit_predict(features - _sums)
-    return np.array(y)
+    D = 1.0 / euclidean_distances(features - _sums, cluster.cluster_centers_, squared=True)
+    D **= 1.0 / (2 - 1)
+    D /= np.sum(D, axis=1)[:, np.newaxis]
+    fuzzy_labels_ = D
+    
+    return np.array(y), fuzzy_labels_.max(axis=1)
+
+
 
 def compute_results(y_pred, data, y_true=None):
     d = {}
@@ -527,3 +507,5 @@ def compute_results(y_pred, data, y_true=None):
         return d, ind
 
     return d, None
+
+        

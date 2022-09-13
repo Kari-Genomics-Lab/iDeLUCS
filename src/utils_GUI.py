@@ -1,25 +1,12 @@
-#GUI.input_n_epochs.
-#GUI.input_n_mimics.
-#GUI.input_n_clusters.
-#GUI.ChooseSeq_Button.
-#GUI.ChooseGT_Button.
-
-
-# GUI.input_model_size.
-# GUI.input_optimizer.
-# GUI.input_batch_sz.
-# GUI.input_lambda.
-# GUI.input_noise.
-
 def define_ToolTips(GUI):
-    GUI.ChooseSeq_Button.setToolTip('Single Fasta file with training sequences.')
+    GUI.ChooseSeq_Button.setToolTip('Single Fasta file with training sequences. \n'
+                                    'The header of each sequence must be a unique \n'
+                                    'sequence identifier and each sequence must follow the \n'
+                                    'IUPAC nomenclature code for nucleic acids.')
 
     GUI.ChooseGT_Button.setToolTip('Tab separated file with possible labels for the training dataset. \n'
     'This labels wont be used during trainig, just for testing purposes. \n'
-    '(Check documentation for file headers)')
-
-
-
+    '(Check documentation for info on file headers)')
 
     GUI.input_k.setToolTip('k-mer length')
 
@@ -31,23 +18,32 @@ def define_ToolTips(GUI):
                                  'as a training iteration over all the training pairs.')
 
     GUI.input_n_clusters.setToolTip('Expected or maximum number of clusters to find. \n'
-                                    'It should be at least n_true_clusters \n'
+                                    'It should be equal or greater than n_true_clusters \n'
                                     'when GT is provided')
 
+    GUI.input_scheduler.setToolTip('Learning rate schedule to train the neural network.')
 
-    #GUI.input_model_size.setToolTip('This is a tooltip for the QPushButton widget')
-    GUI.input_optimizer.setToolTip('Optimizatin algorithm to train the neural network.')
-    GUI.input_batch_sz.setToolTip('Number of data pairs that the network will receive simultaneouly for \n'
-                                  'training. A larger batch may improve convergence but it may harm the \n'
-                                  'accuracy. It must be a multiple of n_mimcs.')
+    GUI.input_batch_sz.setToolTip('Number of data pairs that the network will receive \n'
+                                  'simultaneouly during training. A larger batch may \n'
+                                  'improve convergence but it may harm the accuracy \n')
+
     GUI.input_lambda.setToolTip('Hyperparameter to control cluster balance. \n'
-                                'Use lambda: 1 when unbalanced clusters are expected \n'
-                                'Use lambda: 2.5 when perfectly balanced clusters are expected \n')
-    GUI.input_weight.setToolTip('Addition of noise to the network parameters to prevent overfitting \n'
-                               'This parameter indicates the frequency of noise introduction during training \n'
-                               'use noise: 0 for no noise during training')
+                                'Use lambda: 1.2 when unbalanced clusters are expected \n'
+                                'Use lambda: 2.8 when perfectly balanced clusters are expected \n')
 
-    GUI.input_n_voters.setToolTip('Numer of models to consider in the final clustering assignment.')
+    GUI.input_weight.setToolTip('Relative importance of the contrastive objective on \n'
+                                'the final loss. Use a higher value when low intra- \n'
+                                'cluster distance is expected and a lower value when \n'
+                                'high intra-cluster variability is expected')
+                            
+
+    GUI.Silhouette.setToolTip('Higher is better - This measure compares the cluster \n'
+                            ' assignment of each sequence with the assignment \n'
+                            'of the closest sequence assigned to a different cluster. \n'
+                            'Range: [-1,1]')
+
+    GUI.DB_Index.setToolTip('Lower is better - Measures the average distance between \n'
+                            'clusters, relative to their sizes. Range: [0,2] \n')                         
 
     GUI.Submit_Button.setToolTip('Parse training Information')
     
