@@ -56,12 +56,12 @@ We provide several datasets to test the perfomance of iDeLUCS to find meaningful
 
 ### Running example datasets
 ```
-python iDeLUCS.py Example/FASTA.fas --GT_file=Example/GT.tsv --n_epochs=50 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
+python iDeLUCS.py Example/Vertebrata.fas --GT_file=Example/Vertebrata_GT.tsv --n_epochs=50 --lambda=2.8 --k=6 --n_clusters=5 --n_mimics=3 --batch_sz=360
 ```
 
 Clustering an unkown datasatet with Protists
 ```
-python iDeLUCS.py Example/FASTA_no_labels.fas --n_epochs=30 --lambda=1.2 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=360
+python iDeLUCS.py Example/Actinopterygii.fas --n_epochs=30 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=256
 ```
 
 ### Clustering your own sequences
