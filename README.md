@@ -12,22 +12,20 @@ The installation is via command-line interface and it requires [git](https://git
 
 0. (**Optional**) Create and activate a new virtual environment using [venv](https://docs.python.org/3/library/venv.html)
 ```
-$ mkdir iDeLUCS
-$ cd iDeLUCS # go to project folder
 $ python -m venv dev_iDeLUCS
 $ source dev_iDeLUCS/bin/activate
 ```
 
 1. Clone this repository
  ```
-$ git clone https://github.com/millanp95/iDeLUCS.git .
+$ git clone https://github.com/millanp95/iDeLUCS.git iDeLUCS
   ```
 2. Install required dependencies
 ```
-$ cd iDeLUCS-master
+$ cd iDeLUCS
 $ pip install -r requirements.txt 	
 ```
-**Note:** iDeLUCS uses PyTorch as the machine learning development framework and its latest stable release might not be compatible with your version of CUDA.  
+**Note:** iDeLUCS uses PyTorch as the machine learning development framework and its latest stable release might not be compatible with your version of CUDA. The GUI is built using the Qt platform, make sure you have Qt platform plugings installed.   
 
 3. Test installation
 ```
