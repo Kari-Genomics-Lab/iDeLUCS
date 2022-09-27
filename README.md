@@ -12,7 +12,7 @@ The installation is via command-line interface and it requires [git](https://git
 
 0. (**Optional**) Create and activate a new virtual environment using [venv](https://docs.python.org/3/library/venv.html)
 ```
-$ python -m venv dev_iDeLUCS
+$ python3 -m venv dev_iDeLUCS
 $ source dev_iDeLUCS/bin/activate
 ```
 
