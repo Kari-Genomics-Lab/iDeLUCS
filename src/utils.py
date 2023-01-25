@@ -3,7 +3,7 @@ sys.path.append('src/')
 import pyximport 
 pyximport.install()
 
-from kmers import kmer_counts
+from kmers import kmer_counts, cgr
 
 import random, itertools
 import numpy as np
@@ -185,7 +185,7 @@ def SummaryFasta(fname, GT_file=None):
     return names, lengths, ground_truth, cluster_dis
 
 
-def kmersFasta(fname, k=6, transform=None, reduce=False):
+def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'):
     lines = list()
     seq_id = ""
     names, kmers = [], []
@@ -203,8 +203,12 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
                     transform(seq)
                     
                 counts = np.ones(4**k, dtype=np.int32)
-                kmer_counts(seq, k, counts)
-                #cgr(seq, k, counts)
+                if representation == 'vector':
+                    kmer_counts(seq, k, counts)
+                else:
+                    cgr(seq, k, counts)
+                    counts = counts.reshape((2**k, 2**k))
+
                 kmers.append(counts / np.sum(counts))
                 
                 lines = []
@@ -220,19 +224,24 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
         transform(seq)
         
     counts = np.ones(4**k, dtype=np.int32)
-    kmer_counts(seq, k, counts)
-    #cgr(seq, k, counts)
+    if representation == 'vector':
+        kmer_counts(seq, k, counts)
+    else:
+        cgr(seq, k, counts)
+        counts = counts.reshape((2**k, 2**k))
+
     kmers.append(counts / np.sum(counts))
-    
+
+    result_array = np.array(kmers)
     if reduce:
         K_file = np.load(open(f'kernels/kernel{k}.npz','rb'))
         KERNEL = K_file['arr_0']
-        return names, np.dot(np.array(kmers), KERNEL)
-        
-    return names, np.array(kmers)
+        return names, np.dot(result_array, KERNEL)[:, np.newaxis, ...]
+    
+    return names, result_array[:, np.newaxis, ...]
  
 import time 
-def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
+def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vector'):
 
     train_features = []
     start = time.time()
@@ -240,27 +249,30 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
     # Compute Features and save original data for testing.
     sys.stdout.write(f'\r............computing augmentations (0/{n_mimics})................')
     sys.stdout.flush()
-    _, t_norm = kmersFasta(sequence_file, k=k, transform=transition_transversion(1e-2, 0.5e-2), reduce=reduce)
-    t_norm.resize(t_norm.shape[0],1,t_norm.shape[1])
+    _, t_norm = kmersFasta(sequence_file, k=k, transform=transition_transversion(1e-2, 0.5e-2), reduce=reduce, representation=representation)
+    # t_norm = t_norm[:, np.newaxis, ...]
+    # print("Norm:", t_norm.shape)
+    #t_norm.resize(t_norm.shape[0],1,t_norm.shape[1])
+    #print("Current:", t_norm.shape)
     
     
     sys.stdout.write(f'\r............computing augmentations (1/{n_mimics})................')
     sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transition(1e-2), reduce=reduce)
-    t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transition(1e-2), reduce=reduce, representation=representation)
+    #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     sys.stdout.write(f'\r............computing augmentations (2/{n_mimics})................')
     sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce)
-    t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce, representation=representation)
+    # t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     for j in range(n_mimics-2):
         sys.stdout.write(f'\r............computing augmentations ({3+j}/{n_mimics})................')
         sys.stdout.flush()
-        _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce)
-        t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+        _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce, representation=representation)
+        # t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
         train_features.extend(np.concatenate((t_norm, t_mutated), axis=1)) 
 
     x_train = np.array(train_features).astype('float32')
@@ -268,6 +280,7 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
     #print("\n Elapsed Time:", time.time()-start)
 
     # scaling the data.
+    '''
     scaler = StandardScaler()
     scaler.fit(x_test)
 
@@ -277,7 +290,7 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
 
     x_train[:, 0, :] = x_train_1
     x_train[:, 1, :] = x_train_2
-    
+    '''
     return x_train
 
 class AugmentedDataset(Dataset):
@@ -298,24 +311,25 @@ class AugmentedDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         
-        sample = {'true': self.data[idx, 0, :], 'modified': self.data[idx, 1, :]}  #<--- We can enforce the prediction of same vector
+        sample = {'true': self.data[idx, 0, ...], 'modified': self.data[idx, 1, ...]}  #<--- We can enforce the prediction of same vector
         return sample
 
 class SequenceDataset(Dataset):
     """ Dataset creation directly from fasta file"""
     
-    def __init__(self, fasta_file, k=6, transform=None, GT_file=None, reduce=False):
+    def __init__(self, fasta_file, k=6, transform=None, GT_file=None, reduce=False, representation='vector'):
         """ Args:
             fasta_file (string): Path to te fasta file
             transform (callable, optional): Optional transform to be applied on a 
                                             sequence. Function computing the mimics 
         """
         self.names, self.lengths, self.GT, self.cluster_dis = SummaryFasta(fasta_file, GT_file)
-        _, self.kmers = kmersFasta(fasta_file, k, transform, reduce=reduce)
+        _, self.kmers = kmersFasta(fasta_file, k, transform, reduce=reduce, representation=representation)
 
         # scaling the data.
-        scaler = StandardScaler()
-        self.kmers = scaler.fit_transform(self.kmers)
+        if representation == 'vector':
+            scaler = StandardScaler()
+            self.kmers = scaler.fit_transform(self.kmers)
 
         
     def __len__(self):
@@ -332,9 +346,9 @@ class SequenceDataset(Dataset):
             
         return sample
 
-def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None, reduce=False):
+def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None, reduce=False, representation='vector'):
 
-    train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce)
+    train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce, representation=representation)
     training_set = AugmentedDataset(train_data)
     return DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -494,12 +508,12 @@ def label_features(predictions, n_clusters):
 def compute_results(y_pred, data, y_true=None):
     d = {}
 
-    d['Davies-Boulding'] = metrics.davies_bouldin_score(data, y_pred)
-    d['Silhouette-Score'] = metrics.silhouette_score(data, y_pred)
+    #d['Davies-Boulding'] = metrics.davies_bouldin_score(data, y_pred)
+    #d['Silhouette-Score'] = metrics.silhouette_score(data, y_pred)
 
     if not y_true is None:
-        d['NMI'] = metrics.adjusted_mutual_info_score(y_true, y_pred)
-        d['ARI'] = metrics.adjusted_rand_score(y_true, y_pred)
+        #d['NMI'] = metrics.adjusted_mutual_info_score(y_true, y_pred)
+        #d['ARI'] = metrics.adjusted_rand_score(y_true, y_pred)
 
         ind, acc = cluster_acc(y_true, y_pred)
         d['ACC'] = acc
