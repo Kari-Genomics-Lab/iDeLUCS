@@ -172,7 +172,6 @@ class IID_model():
                 else:
                     #kmers = test['kmer'][:, np.newaxis, ...].type(dtype)
                     kmers = test['kmer'].type(dtype)
-                print(kmers.shape)
                 outputs, logits = self.net(kmers)
                 probs,  predicted = torch.max(outputs, 1)
 

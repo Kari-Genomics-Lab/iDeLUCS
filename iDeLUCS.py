@@ -62,7 +62,7 @@ def run(args):
     display_training.set_xlabel("Epoch")
     display_training.set_ylabel("Training Loss")
 
-
+    
     for voter in range(args['n_voters']):
         sys.stdout.write(f"\r........... Training Model ({voter+1}/{ args['n_voters']})................")
         sys.stdout.flush()

@@ -242,9 +242,8 @@ def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'
  
 import time 
 def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vector'):
-
+    print(representation, n_mimics)
     train_features = []
-    start = time.time()
 
     # Compute Features and save original data for testing.
     sys.stdout.write(f'\r............computing augmentations (0/{n_mimics})................')
@@ -280,17 +279,17 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vec
     #print("\n Elapsed Time:", time.time()-start)
 
     # scaling the data.
-    '''
-    scaler = StandardScaler()
-    scaler.fit(x_test)
+    if representation not in ("conv"):
+        print('scaling!')
+        scaler = StandardScaler()
+        scaler.fit(x_test)
 
-    x_train_1 = scaler.transform(x_train[:, 0, :])
-    x_train_2 = scaler.transform(x_train[:, 1, :])
-    x_test = scaler.transform(x_test)
+        x_train_1 = scaler.transform(x_train[:, 0, :])
+        x_train_2 = scaler.transform(x_train[:, 1, :])
+        x_test = scaler.transform(x_test)
 
-    x_train[:, 0, :] = x_train_1
-    x_train[:, 1, :] = x_train_2
-    '''
+        x_train[:, 0, :] = x_train_1
+        x_train[:, 1, :] = x_train_2
     return x_train
 
 class AugmentedDataset(Dataset):
@@ -347,7 +346,6 @@ class SequenceDataset(Dataset):
         return sample
 
 def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None, reduce=False, representation='vector'):
-
     train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce, representation=representation)
     training_set = AugmentedDataset(train_data)
     return DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=4)
