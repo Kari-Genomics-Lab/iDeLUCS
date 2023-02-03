@@ -46,8 +46,45 @@ def check_sequence(header, seq):
         bad_character = chr(stripped[0])
         msg = "Invalid DNA byte in sequence {}: '{}'"
         raise ValueError(msg.format(header, bad_character))
-    
-    
+
+def pos_gen(kmer):
+    """
+    Find the position of a particular kmer in the CGR.
+    :param kmer: string with the kmer.
+    :return: position in the CGR.
+    """
+    k = len(kmer)
+    posx = 2 ** k
+    posy = 2 ** k
+    for i in range(1, k + 1):
+        bp = kmer[-i]
+        # print(posx, posy)
+        if bp == 'C':
+            posx = posx - 2 ** (k - i)
+            posy = posy - 2 ** (k - i)
+        elif bp == 'A':
+            posx = posx - 2 ** (k - i)
+        elif bp == 'G':
+            posy = posy - 2 ** (k - i)
+    return int(posx - 1), int(posy - 1)
+
+def cgr_gen(probs, k):
+    """
+    Generate CGR from the kmer counts for a given value of k.
+    :param probs: array with the normalized kmer counts
+    :param k:
+    :return: 2D - CGR pattern.
+    """
+    from itertools import product
+    kamers = product(*(["ACTG"] * k))
+    mat = np.zeros((2 ** k, 2 ** k))
+    for i, kmer in enumerate(kamers):
+        x, y = pos_gen(kmer)
+        # print(x, y)
+        mat[y][x] = probs[i]
+    return mat
+
+
 class transition(object):
     """
     Mutate Genomic sequence using transitions only.
@@ -206,8 +243,10 @@ def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'
                 if representation == 'vector':
                     kmer_counts(seq, k, counts)
                 else:
-                    cgr(seq, k, counts)
-                    counts = counts.reshape((2**k, 2**k))
+                    # cgr(seq, k, counts)
+                    kmer_counts(seq, k, counts)
+                    counts = cgr_gen(counts, k)
+                    # counts = counts.reshape((2**k, 2**k))
 
                 kmers.append(counts / np.sum(counts))
                 
@@ -227,8 +266,8 @@ def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'
     if representation == 'vector':
         kmer_counts(seq, k, counts)
     else:
-        cgr(seq, k, counts)
-        counts = counts.reshape((2**k, 2**k))
+        kmer_counts(seq, k, counts)
+        counts = cgr_gen(counts, k)
 
     kmers.append(counts / np.sum(counts))
 
@@ -236,13 +275,16 @@ def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'
     if reduce:
         K_file = np.load(open(f'kernels/kernel{k}.npz','rb'))
         KERNEL = K_file['arr_0']
-        return names, np.dot(result_array, KERNEL)[:, np.newaxis, ...]
+        result_array = np.dot(result_array, KERNEL)
+        # return names, [:, np.newaxis, ...]
     
+    #if representation == 'vector':
+    #    return names, result_array
+    #else:
     return names, result_array[:, np.newaxis, ...]
  
 import time 
 def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vector'):
-    print(representation, n_mimics)
     train_features = []
 
     # Compute Features and save original data for testing.
@@ -264,14 +306,14 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vec
     sys.stdout.write(f'\r............computing augmentations (2/{n_mimics})................')
     sys.stdout.flush()
     _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce, representation=representation)
-    # t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+    #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     for j in range(n_mimics-2):
         sys.stdout.write(f'\r............computing augmentations ({3+j}/{n_mimics})................')
         sys.stdout.flush()
         _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce, representation=representation)
-        # t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+        #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
         train_features.extend(np.concatenate((t_norm, t_mutated), axis=1)) 
 
     x_train = np.array(train_features).astype('float32')
@@ -279,8 +321,7 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vec
     #print("\n Elapsed Time:", time.time()-start)
 
     # scaling the data.
-    if representation not in ("conv"):
-        print('scaling!')
+    if representation not in ("fcgr"):
         scaler = StandardScaler()
         scaler.fit(x_test)
 
@@ -290,6 +331,14 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vec
 
         x_train[:, 0, :] = x_train_1
         x_train[:, 1, :] = x_train_2
+    else:
+        x_train_1 = x_train[:, 0, :]
+        x_train_2 = x_train[:, 1, :]
+        x_train_1 = (x_train_1 - np.mean(x_train_1)) / np.std(x_train_1)
+        x_train_2 = (x_train_2 - np.mean(x_train_2)) / np.std(x_train_2)
+        x_train[:, 0, :] = x_train_1
+        x_train[:, 1, :] = x_train_2
+
     return x_train
 
 class AugmentedDataset(Dataset):
@@ -328,8 +377,12 @@ class SequenceDataset(Dataset):
         # scaling the data.
         if representation == 'vector':
             scaler = StandardScaler()
+            self.kmers = self.kmers[:, 0, :]
             self.kmers = scaler.fit_transform(self.kmers)
-
+        else:
+            self.kmers = self.kmers[:, 0, :]
+            self.kmers = (self.kmers - np.mean(self.kmers)) / np.std(self.kmers)
+            self.kmers = self.kmers[:, np.newaxis, :, :]
         
     def __len__(self):
         return len(self.lengths)

@@ -152,8 +152,8 @@ class IID_model():
         return running_loss.item()
 
     def predict(self, data=None):
-        
-        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=self.model_type)
+        representation = 'fcgr' if self.model_type in ('conv') else 'vector'
+        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=representation)
         test_dataloader = DataLoader(test_dataset, 
                              batch_size=self.batch_sz,
                              shuffle=False,
@@ -183,9 +183,9 @@ class IID_model():
         return np.array(y_pred), np.array(probabilities), np.array(latent) 
 
     def calculate_probs(self, data=None):
-        
         n_features = self.n_features
-        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=self.model_type)
+        representation = 'fcgr' if self.model_type in ('conv') else 'vector'
+        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=representation)
         test_dataloader = DataLoader(test_dataset, 
                              batch_size=self.batch_sz,
                              shuffle=False,

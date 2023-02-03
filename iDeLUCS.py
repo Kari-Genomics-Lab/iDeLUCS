@@ -18,9 +18,12 @@ def weights_init(m):
     :param m: Layer
     :return:
     """
-    if isinstance(m, torch.nn.Linear):
-        torch.nn.init.kaiming_normal_(m.weight)
-        torch.nn.init.zeros_(m.bias)
+    #if isinstance(m, torch.nn.Linear):
+    #    torch.nn.init.kaiming_normal_(m.weight)
+    #    torch.nn.init.zeros_(m.bias)
+    
+    if hasattr(m, 'reset_parameters'):
+       m.reset_parameters()
           
 
 def run(args):
@@ -71,6 +74,7 @@ def run(args):
         model_loss = []
         for i in range(args['n_epochs']):
             loss = model.contrastive_training_epoch()
+            # loss = 10
             model_loss.append(loss)
 
         length = len(model.names)
