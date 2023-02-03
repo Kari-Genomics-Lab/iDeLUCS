@@ -7,4 +7,7 @@ torchvision
 scikit-learn
 scipy
 umap-learn
+PyQt5                   
+PyQt5-Qt5               
+PyQt5-sip
 tqdm
