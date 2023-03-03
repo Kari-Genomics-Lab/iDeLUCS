@@ -154,25 +154,32 @@ class ConvNet( nn.Module):
                 nn.BatchNorm2d(16),
                 nn.ReLU(),
                 nn.AvgPool2d(3,2,1),
+                nn.Dropout(p=0.2),
                 nn.Conv2d(16,32,3,1,1),
                 nn.BatchNorm2d(32),
                 nn.ReLU(),
                 nn.MaxPool2d(3,2,1),
+                nn.Dropout(p=0.2),
                 nn.Conv2d(32,64,3,1,1),
                 nn.BatchNorm2d(64),
                 nn.ReLU(),
                 nn.MaxPool2d(3,2,1),
+                nn.Dropout(p=0.2),
                 nn.Conv2d(64,64,3,1,1),
                 nn.AdaptiveAvgPool2d((1,1))
         )
-
-        self.fc = nn.Linear(64, num_classes)
-        self.softmax = nn.Softmax(dim=1)
+        
+        self.classifier = nn.Sequential(
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(64, num_classes),  
+            nn.Softmax(dim=1)
+        )
     
     def forward(self, x):
         latent = self.layers(x)
         latent = latent.reshape(latent.shape[0], -1)
-        out = self.softmax(self.fc(latent))
+        out = self.classifier(latent)
 
         return out, latent 
 

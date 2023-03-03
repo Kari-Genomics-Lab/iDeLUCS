@@ -5,12 +5,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.utils import SummaryFasta, plot_confusion_matrix, \
-                      label_features, compute_results
+                      label_features, compute_results, generate_csv_mapping
 
 import argparse
 import torch
 import sys
 import time
+from datetime import datetime
+from resource import *
+import csv
+import tracemalloc
+
+def save_results_in_file(dataset_name, model_name, model_parameters, results,file_name):
+    # Create the file if it does not exitst and write first file with column names
+    with open(file_name, mode='a', newline='') as file:
+        writer = csv.writer(file, delimiter='\t')
+        if file.tell() == 0:
+            writer.writerow(['Dataset', 'Model', 'Parameters'] + list(results.keys()))
+
+        # Write the new row
+        row = [dataset_name, model_name, model_parameters] + list(results.values())
+        writer.writerow(row)
+        
+
 
 def weights_init(m):
     """
@@ -18,16 +35,17 @@ def weights_init(m):
     :param m: Layer
     :return:
     """
-    #if isinstance(m, torch.nn.Linear):
-    #    torch.nn.init.kaiming_normal_(m.weight)
-    #    torch.nn.init.zeros_(m.bias)
-    
-    if hasattr(m, 'reset_parameters'):
-       m.reset_parameters()
-          
+    if isinstance(m, torch.nn.Linear):
+        torch.nn.init.kaiming_normal_(m.weight)
+        torch.nn.init.zeros_(m.bias)
+    elif hasattr(m, 'reset_parameters'):
+        m.reset_parameters()          
 
 def run(args):
-
+    # starting memory monitoring
+    tracemalloc.start()
+    
+    
     now = time.asctime()
     time_stamp = now.split(' ')
     hour = now.split(' ')[3]
@@ -35,7 +53,7 @@ def run(args):
     time_stamp = '_'.join(time_stamp[1:4])
 
     folder_name = os.getcwd()
-    folder_name = f'{folder_name}/Results'
+    folder_name = f"{folder_name}/Results"
 
     if not os.path.isdir(folder_name):
         os.mkdir(folder_name)
@@ -65,7 +83,7 @@ def run(args):
     display_training.set_xlabel("Epoch")
     display_training.set_ylabel("Training Loss")
 
-    
+    start_time = datetime.now()
     for voter in range(args['n_voters']):
         sys.stdout.write(f"\r........... Training Model ({voter+1}/{ args['n_voters']})................")
         sys.stdout.flush()
@@ -75,6 +93,7 @@ def run(args):
         for i in range(args['n_epochs']):
             loss = model.contrastive_training_epoch()
             # loss = 10
+            print(f"Epoch: {i}, Loss: {loss}, n_voter: {voter}")
             model_loss.append(loss)
 
         length = len(model.names)
@@ -95,9 +114,16 @@ def run(args):
         display_training.plot(model_loss, label=f'Model {voter+1}')
         display_training.axes.legend(loc=1)
         training_figure.savefig(f'{folder_name}/{time_stamp}/training_plots.jpg')
+        
+        print("Memory Usage:", tracemalloc.get_traced_memory())
 
     y_pred, probabilities = label_features(np.array(predictions), args['n_clusters'])
-
+    end_time = datetime.now()
+    time_taken = end_time - start_time
+    print("Training took:", time_taken)
+    print("Memory Usage Summary:", tracemalloc.get_traced_memory())
+    
+    
     #--------------------- Computing and Saving the Results
     sys.stdout.write(f"\r........... Computing Results ................")
     sys.stdout.flush()
@@ -121,15 +147,24 @@ def run(args):
                 clustered[i] = True
 
         fig, new_ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
-        plot_confusion_matrix(w, unique_labels, ax=new_ax, normalize=False)
-        
+        if len(unique_labels) < 16:
+            plot_confusion_matrix(w, unique_labels, ax=new_ax, normalize=False)
+            fig.savefig(f'{folder_name}/{time_stamp}/contingency_matrix.jpg')
+        else:
+            # generating a csv mapping
+            generate_csv_mapping(w, unique_labels)
     else:
         results, ind = compute_results(y_pred, latent)
         clustered = (probabilities >= 0.9)
-        fig = None
        
+    results["time taken"] = time_taken
+    results["memory usage"] = tracemalloc.get_traced_memory()
+    
     sys.stdout.write(f"\r........ Saving Results ..............")
     sys.stdout.flush()
+    
+    dataset_name = args['sequence_file'].split('/')[-1]
+    save_results_in_file(dataset_name, "iDeLUCS", args, results, "ALL_RESULTS.tsv")
 
     names = np.array(model.names)
     data = np.concatenate((names[:,np.newaxis],
@@ -141,9 +176,6 @@ def run(args):
 
     df=pd.Series(results, name='Value')
     df.to_csv(f'{folder_name}/{time_stamp}/metrics.tsv',sep='\t')
-
-    if fig != None:
-        fig.savefig(f'{folder_name}/{time_stamp}/contingency_matrix.jpg')
 
     # ------------------------------- Computing and Saving the Representations
     
@@ -169,7 +201,7 @@ def run(args):
                cmap='Spectral')
     plt.show()
     fig.savefig(f'{folder_name}/{time_stamp}/learned_representation.jpg')
-    
+    tracemalloc.stop()
 def main():
     parser= argparse.ArgumentParser()
     parser.add_argument('--sequence_file', action='store',type=str)
@@ -194,7 +226,6 @@ def main():
         print(f'{key} \t -> {args[key]}')
     
     run(args)
-
 
 if __name__ == '__main__':
     main()

@@ -482,6 +482,13 @@ def cluster_acc(y_true, y_pred):
     ind = np.transpose(ind)
     return ind, sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+def generate_csv_mapping(cm, target_names):
+    result_dict = {}
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):  
+        result_dict[(target_names[i], target_names[j])] = cm[i, j]
+    result_pd = pd.DataFrame(result_dict)
+    result_pd.to_csv('confusion_matrix.csv')
+    
 def plot_confusion_matrix(cm,
                           target_names,
                           pairs = None,
@@ -559,8 +566,8 @@ def label_features(predictions, n_clusters):
 def compute_results(y_pred, data, y_true=None):
     d = {}
 
-    #d['Davies-Boulding'] = metrics.davies_bouldin_score(data, y_pred)
-    #d['Silhouette-Score'] = metrics.silhouette_score(data, y_pred)
+    d['Davies-Boulding'] = metrics.davies_bouldin_score(data, y_pred)
+    d['Silhouette-Score'] = metrics.silhouette_score(data, y_pred)
 
     if not y_true is None:
         #d['NMI'] = metrics.adjusted_mutual_info_score(y_true, y_pred)
