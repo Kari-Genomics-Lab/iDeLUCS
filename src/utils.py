@@ -486,7 +486,17 @@ def generate_csv_mapping(cm, target_names):
     result_dict = {}
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):  
         result_dict[(target_names[i], target_names[j])] = cm[i, j]
-    result_pd = pd.DataFrame(result_dict)
+    pandas_dict = {
+        "Predicted": [],
+        "Actual": [],
+        "Count": []
+    }
+    for (target1, target2), count in result_dict.items():
+        pandas_dict["Predicted"].append(target1)
+        pandas_dict["Actual"].append(target2)
+        pandas_dict["Count"].append(count)
+    
+    result_pd = pd.DataFrame(pandas_dict)
     result_pd.to_csv('confusion_matrix.csv')
     
 def plot_confusion_matrix(cm,
