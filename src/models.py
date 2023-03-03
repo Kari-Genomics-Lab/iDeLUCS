@@ -11,7 +11,7 @@ sys.path.append('../src/')
 from LossFunctions import IID_loss, info_nce_loss
 from torch.utils.data import DataLoader
 from PytorchUtils import NetLinear, myNet
-from ResNet import ResNet18
+from ResNet import ResNet18, ConvNet
 
 from utils import SequenceDataset, create_dataloader
 
@@ -52,20 +52,24 @@ class IID_model():
 
         self.n_clusters = args['n_clusters']
         self.k = args['k']
-        
-        if args['model_size'] == 'linear':
+        self.model_type = args['model_size']
+
+        if self.model_type == 'linear':
             self.n_features = 4**self.k
             self.net = NetLinear(self.n_features, args['n_clusters'])
             self.reduce = False
             
-        elif args['model_size'] == 'small':
+        elif self.model_type == 'small':
             d = {4: 135, 5: 511, 6: 2079}
             self.n_features = d[args['k']]
             self.net = myNet(self.n_features, args['n_clusters'])
             self.reduce = True
             
-        elif args['model_size'] == 'full':
+        elif self.model_type == 'full':
             self.net = ResNet18(1, args['n_clusters'])
+        elif self.model_type == 'conv':
+            self.net = ConvNet(1, args['n_clusters'])
+            self.reduce = False
         else:
             raise ValueError("Invalid Model Type")
         
@@ -101,24 +105,28 @@ class IID_model():
         #Data Files
         data_path = self.sequence_file
         GT_file = self.GT_file
+        representation = 'fcgr' if self.model_type in ('conv') else 'vector'
                 
         self.dataloader = create_dataloader(data_path, 
                                              self.n_mimics, 
                                              k=self.k, 
                                              batch_size=self.batch_sz, 
                                              GT_file=GT_file,
-                                             reduce=self.reduce)
+                                             reduce=self.reduce,
+                                             representation=representation)
 
     def contrastive_training_epoch(self):
-        n_features = self.n_features
-        batch_size = self.batch_sz
-        k = self.k 
         self.net.train()
         running_loss = 0.0
 
         for i_batch, sample_batched in enumerate(self.dataloader):
-            sample = sample_batched['true'].view(-1, 1, self.n_features).type(dtype)
-            modified_sample = sample_batched['modified'].view(-1, 1, self.n_features).type(dtype)
+
+            if self.model_type not in ('conv'):
+                sample = sample_batched['true'].view(-1, 1, self.n_features).type(dtype)
+                modified_sample = sample_batched['modified'].view(-1, 1, self.n_features).type(dtype)
+            else:
+                sample = sample_batched['true'][:, np.newaxis, ...].type(dtype)
+                modified_sample = sample_batched['modified'][:, np.newaxis, ...].type(dtype)
             
             # zero the gradients
             self.optimizer.zero_grad()
@@ -144,9 +152,8 @@ class IID_model():
         return running_loss.item()
 
     def predict(self, data=None):
-        
-        n_features = self.n_features
-        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce)
+        representation = 'fcgr' if self.model_type in ('conv') else 'vector'
+        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=representation)
         test_dataloader = DataLoader(test_dataset, 
                              batch_size=self.batch_sz,
                              shuffle=False,
@@ -160,7 +167,11 @@ class IID_model():
             self.net.eval()
             
             for test in test_dataloader:
-                kmers = test['kmer'].view(-1, 1, self.n_features).type(dtype)
+                if self.model_type not in ('conv'):
+                    kmers = test['kmer'].view(-1, 1, self.n_features).type(dtype)
+                else:
+                    #kmers = test['kmer'][:, np.newaxis, ...].type(dtype)
+                    kmers = test['kmer'].type(dtype)
                 outputs, logits = self.net(kmers)
                 probs,  predicted = torch.max(outputs, 1)
 
@@ -172,9 +183,9 @@ class IID_model():
         return np.array(y_pred), np.array(probabilities), np.array(latent) 
 
     def calculate_probs(self, data=None):
-        
         n_features = self.n_features
-        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce)
+        representation = 'fcgr' if self.model_type in ('conv') else 'vector'
+        test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce, representation=representation)
         test_dataloader = DataLoader(test_dataset, 
                              batch_size=self.batch_sz,
                              shuffle=False,
@@ -185,7 +196,10 @@ class IID_model():
         with torch.no_grad():
             self.net.eval()
             for test in test_dataloader:
-                kmers = test['kmer'].view(-1, 1, n_features).type(dtype)
+                if self.model_type not in ('conv'):
+                    kmers = test['kmer'].view(-1, 1, n_features).type(dtype)
+                else:
+                    kmers = test['kmer'][:, np.newaxis, ...].type(dtype)
 
                 #calculate the prediction by running through the network
                 outputs, logits = self.net(kmers)

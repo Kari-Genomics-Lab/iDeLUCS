@@ -1,0 +1,6 @@
+__pycache__/
+dev_iDeLUCS/*
+.idea/*
+.DS_Store
+Results/
+*/__pycache__/*

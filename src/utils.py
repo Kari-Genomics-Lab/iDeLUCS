@@ -3,7 +3,7 @@ sys.path.append('src/')
 import pyximport 
 pyximport.install()
 
-from kmers import kmer_counts
+from kmers import kmer_counts, cgr
 
 import random, itertools
 import numpy as np
@@ -46,8 +46,45 @@ def check_sequence(header, seq):
         bad_character = chr(stripped[0])
         msg = "Invalid DNA byte in sequence {}: '{}'"
         raise ValueError(msg.format(header, bad_character))
-    
-    
+
+def pos_gen(kmer):
+    """
+    Find the position of a particular kmer in the CGR.
+    :param kmer: string with the kmer.
+    :return: position in the CGR.
+    """
+    k = len(kmer)
+    posx = 2 ** k
+    posy = 2 ** k
+    for i in range(1, k + 1):
+        bp = kmer[-i]
+        # print(posx, posy)
+        if bp == 'C':
+            posx = posx - 2 ** (k - i)
+            posy = posy - 2 ** (k - i)
+        elif bp == 'A':
+            posx = posx - 2 ** (k - i)
+        elif bp == 'G':
+            posy = posy - 2 ** (k - i)
+    return int(posx - 1), int(posy - 1)
+
+def cgr_gen(probs, k):
+    """
+    Generate CGR from the kmer counts for a given value of k.
+    :param probs: array with the normalized kmer counts
+    :param k:
+    :return: 2D - CGR pattern.
+    """
+    from itertools import product
+    kamers = product(*(["ACTG"] * k))
+    mat = np.zeros((2 ** k, 2 ** k))
+    for i, kmer in enumerate(kamers):
+        x, y = pos_gen(kmer)
+        # print(x, y)
+        mat[y][x] = probs[i]
+    return mat
+
+
 class transition(object):
     """
     Mutate Genomic sequence using transitions only.
@@ -185,7 +222,7 @@ def SummaryFasta(fname, GT_file=None):
     return names, lengths, ground_truth, cluster_dis
 
 
-def kmersFasta(fname, k=6, transform=None, reduce=False):
+def kmersFasta(fname, k=6, transform=None, reduce=False, representation='vector'):
     lines = list()
     seq_id = ""
     names, kmers = [], []
@@ -203,8 +240,14 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
                     transform(seq)
                     
                 counts = np.ones(4**k, dtype=np.int32)
-                kmer_counts(seq, k, counts)
-                #cgr(seq, k, counts)
+                if representation == 'vector':
+                    kmer_counts(seq, k, counts)
+                else:
+                    # cgr(seq, k, counts)
+                    kmer_counts(seq, k, counts)
+                    counts = cgr_gen(counts, k)
+                    # counts = counts.reshape((2**k, 2**k))
+
                 kmers.append(counts / np.sum(counts))
                 
                 lines = []
@@ -220,47 +263,57 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
         transform(seq)
         
     counts = np.ones(4**k, dtype=np.int32)
-    kmer_counts(seq, k, counts)
-    #cgr(seq, k, counts)
+    if representation == 'vector':
+        kmer_counts(seq, k, counts)
+    else:
+        kmer_counts(seq, k, counts)
+        counts = cgr_gen(counts, k)
+
     kmers.append(counts / np.sum(counts))
-    
+
+    result_array = np.array(kmers)
     if reduce:
         K_file = np.load(open(f'kernels/kernel{k}.npz','rb'))
         KERNEL = K_file['arr_0']
-        return names, np.dot(np.array(kmers), KERNEL)
-        
-    return names, np.array(kmers)
+        result_array = np.dot(result_array, KERNEL)
+        # return names, [:, np.newaxis, ...]
+    
+    #if representation == 'vector':
+    #    return names, result_array
+    #else:
+    return names, result_array[:, np.newaxis, ...]
  
 import time 
-def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
-
+def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False, representation='vector'):
     train_features = []
-    start = time.time()
 
     # Compute Features and save original data for testing.
     sys.stdout.write(f'\r............computing augmentations (0/{n_mimics})................')
     sys.stdout.flush()
-    _, t_norm = kmersFasta(sequence_file, k=k, transform=transition_transversion(1e-2, 0.5e-2), reduce=reduce)
-    t_norm.resize(t_norm.shape[0],1,t_norm.shape[1])
+    _, t_norm = kmersFasta(sequence_file, k=k, transform=transition_transversion(1e-2, 0.5e-2), reduce=reduce, representation=representation)
+    # t_norm = t_norm[:, np.newaxis, ...]
+    # print("Norm:", t_norm.shape)
+    #t_norm.resize(t_norm.shape[0],1,t_norm.shape[1])
+    #print("Current:", t_norm.shape)
     
     
     sys.stdout.write(f'\r............computing augmentations (1/{n_mimics})................')
     sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transition(1e-2), reduce=reduce)
-    t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transition(1e-2), reduce=reduce, representation=representation)
+    #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     sys.stdout.write(f'\r............computing augmentations (2/{n_mimics})................')
     sys.stdout.flush()
-    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce)
-    t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+    _, t_mutated = kmersFasta(sequence_file, k=k, transform=transversion(0.5e-2), reduce=reduce, representation=representation)
+    #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
     train_features.extend(np.concatenate((t_norm, t_mutated), axis=1))
     
     for j in range(n_mimics-2):
         sys.stdout.write(f'\r............computing augmentations ({3+j}/{n_mimics})................')
         sys.stdout.flush()
-        _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce)
-        t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
+        _, t_mutated = kmersFasta(sequence_file, k=k, transform=Random_N(20), reduce=reduce, representation=representation)
+        #t_mutated.resize(t_mutated.shape[0], 1, t_mutated.shape[1])
         train_features.extend(np.concatenate((t_norm, t_mutated), axis=1)) 
 
     x_train = np.array(train_features).astype('float32')
@@ -268,16 +321,24 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
     #print("\n Elapsed Time:", time.time()-start)
 
     # scaling the data.
-    scaler = StandardScaler()
-    scaler.fit(x_test)
+    if representation not in ("fcgr"):
+        scaler = StandardScaler()
+        scaler.fit(x_test)
 
-    x_train_1 = scaler.transform(x_train[:, 0, :])
-    x_train_2 = scaler.transform(x_train[:, 1, :])
-    x_test = scaler.transform(x_test)
+        x_train_1 = scaler.transform(x_train[:, 0, :])
+        x_train_2 = scaler.transform(x_train[:, 1, :])
+        x_test = scaler.transform(x_test)
 
-    x_train[:, 0, :] = x_train_1
-    x_train[:, 1, :] = x_train_2
-    
+        x_train[:, 0, :] = x_train_1
+        x_train[:, 1, :] = x_train_2
+    else:
+        x_train_1 = x_train[:, 0, :]
+        x_train_2 = x_train[:, 1, :]
+        x_train_1 = (x_train_1 - np.mean(x_train_1)) / np.std(x_train_1)
+        x_train_2 = (x_train_2 - np.mean(x_train_2)) / np.std(x_train_2)
+        x_train[:, 0, :] = x_train_1
+        x_train[:, 1, :] = x_train_2
+
     return x_train
 
 class AugmentedDataset(Dataset):
@@ -298,25 +359,30 @@ class AugmentedDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
         
-        sample = {'true': self.data[idx, 0, :], 'modified': self.data[idx, 1, :]}  #<--- We can enforce the prediction of same vector
+        sample = {'true': self.data[idx, 0, ...], 'modified': self.data[idx, 1, ...]}  #<--- We can enforce the prediction of same vector
         return sample
 
 class SequenceDataset(Dataset):
     """ Dataset creation directly from fasta file"""
     
-    def __init__(self, fasta_file, k=6, transform=None, GT_file=None, reduce=False):
+    def __init__(self, fasta_file, k=6, transform=None, GT_file=None, reduce=False, representation='vector'):
         """ Args:
             fasta_file (string): Path to te fasta file
             transform (callable, optional): Optional transform to be applied on a 
                                             sequence. Function computing the mimics 
         """
         self.names, self.lengths, self.GT, self.cluster_dis = SummaryFasta(fasta_file, GT_file)
-        _, self.kmers = kmersFasta(fasta_file, k, transform, reduce=reduce)
+        _, self.kmers = kmersFasta(fasta_file, k, transform, reduce=reduce, representation=representation)
 
         # scaling the data.
-        scaler = StandardScaler()
-        self.kmers = scaler.fit_transform(self.kmers)
-
+        if representation == 'vector':
+            scaler = StandardScaler()
+            self.kmers = self.kmers[:, 0, :]
+            self.kmers = scaler.fit_transform(self.kmers)
+        else:
+            self.kmers = self.kmers[:, 0, :]
+            self.kmers = (self.kmers - np.mean(self.kmers)) / np.std(self.kmers)
+            self.kmers = self.kmers[:, np.newaxis, :, :]
         
     def __len__(self):
         return len(self.lengths)
@@ -332,9 +398,8 @@ class SequenceDataset(Dataset):
             
         return sample
 
-def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None, reduce=False):
-
-    train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce)
+def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None, reduce=False, representation='vector'):
+    train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce, representation=representation)
     training_set = AugmentedDataset(train_data)
     return DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -417,6 +482,23 @@ def cluster_acc(y_true, y_pred):
     ind = np.transpose(ind)
     return ind, sum([w[i, j] for i, j in ind]) * 1.0 / y_pred.size
 
+def generate_csv_mapping(cm, target_names):
+    result_dict = {}
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):  
+        result_dict[(target_names[i], target_names[j])] = cm[i, j]
+    pandas_dict = {
+        "Predicted": [],
+        "Actual": [],
+        "Count": []
+    }
+    for (target1, target2), count in result_dict.items():
+        pandas_dict["Predicted"].append(target1)
+        pandas_dict["Actual"].append(target2)
+        pandas_dict["Count"].append(count)
+    
+    result_pd = pd.DataFrame(pandas_dict)
+    result_pd.to_csv('confusion_matrix.csv')
+    
 def plot_confusion_matrix(cm,
                           target_names,
                           pairs = None,
@@ -498,8 +580,8 @@ def compute_results(y_pred, data, y_true=None):
     d['Silhouette-Score'] = metrics.silhouette_score(data, y_pred)
 
     if not y_true is None:
-        d['NMI'] = metrics.adjusted_mutual_info_score(y_true, y_pred)
-        d['ARI'] = metrics.adjusted_rand_score(y_true, y_pred)
+        #d['NMI'] = metrics.adjusted_mutual_info_score(y_true, y_pred)
+        #d['ARI'] = metrics.adjusted_rand_score(y_true, y_pred)
 
         ind, acc = cluster_acc(y_true, y_pred)
         d['ACC'] = acc
