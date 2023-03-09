@@ -32,6 +32,18 @@ $ pip install -r requirements.txt
 $ python iDeLUCS.py -h 	
 ```
 
+### (Optional) Using the GUI on Apple Silicon-based Macs
+The current `pip` distribution of `PyQt5` does not support Apple Silicon. However, to make it work we can use the `brew` distribution of `PyQt5` and then point to that distribution from within the `virtualenv`.
+1. Ensure that `homebrew` is installed correctly.
+2. `brew install PyQt5`
+3. Run `brew --prefix PyQt5` to see where `PyQt5` is installed.
+4. Append `/lib/python3.9/site-packages/PyQt5` to the end of the string returned from the previous command.
+5. Navigate to the root `iDeLUCS` folder.
+6. Establish a symbolic link between the `brew` installed `PyQt5` package and the virtual environment's `site-packages` folder.
+    - Example: `ln -s /opt/homebrew/opt/pyqt@5/lib/python3.9/site-packages/PyQt5 /Users/shaneding/Desktop/iDeLUCS/dev_iDeLUCS/lib/python3.10/site-packages`
+
+If the above does not work, try seeing what different versions of python are inside `/opt/homebrew/opt/pyqt@5/lib` and try linking to a different version.
+
 ### Clustering parameters
 
 iDeLUCS assigns a cluster identifier to all the DNA sequences present in a sigle FASTA file. The path to this file must be provided as input in both the CLI and the GUI versions of iDeLUCS. There are several hyperparameters that are required to perform the clustering. The user may use the default values or select a specific one depending on the amount of information that is available about the dataset. 
