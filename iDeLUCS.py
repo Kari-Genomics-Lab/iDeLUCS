@@ -146,8 +146,9 @@ def run(args):
             if y[i] == d[y_pred[i]]:
                 clustered[i] = True
 
-        fig, new_ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
+        
         if len(unique_labels) < 16:
+            fig, new_ax = plt.subplots( nrows=1, ncols=1 )  # create figure & 1 axis
             plot_confusion_matrix(w, unique_labels, ax=new_ax, normalize=False)
             fig.savefig(f'{folder_name}/{time_stamp}/contingency_matrix.jpg')
         else:
