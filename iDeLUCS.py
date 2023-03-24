@@ -1,10 +1,10 @@
 import pandas as pd
 import os
-from src import models
+from idelucs import models
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.utils import SummaryFasta, plot_confusion_matrix, \
+from idelucs.utils import SummaryFasta, plot_confusion_matrix, \
                       label_features, compute_results, generate_csv_mapping
 
 import argparse

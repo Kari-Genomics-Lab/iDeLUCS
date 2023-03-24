@@ -8,7 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn import mixture
 from sklearn.cluster import KMeans
 
-from src.utils import SummaryFasta, compute_results, kmersFasta
+from idelucs.utils import SummaryFasta, compute_results, kmersFasta
 import argparse
 import time
 

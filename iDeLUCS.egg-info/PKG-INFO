@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: iDeLUCS
+Version: 0.0.3
+Summary: iDeLUCS Python package
+Author: Pablo Millana
+Author-email: pmillana@uwaterloo.ca
+Keywords: python,clustering,sequences,latent representations
+Classifier: Intended Audience :: Education
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: MacOS :: MacOS X
+Classifier: Operating System :: Microsoft :: Windows
+License-File: LICENCE.md
+
+Unsupervised clustering of sequences using latent representations
