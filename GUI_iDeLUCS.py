@@ -16,17 +16,18 @@ QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True) #use h
 sys.stdout.write("\r... loading libraries [20%]..........")
 sys.stdout.flush()
 
-from src import models
-from src.utils import SummaryFasta, PlotPolygon, plot_confusion_matrix, \
+from idelucs import LossFunctions, kmers_non_cython, PytorchUtils, ResNet, utils
+from idelucs import models
+from idelucs.utils import SummaryFasta, PlotPolygon, plot_confusion_matrix, \
                       compute_results
-from src.utils_GUI import define_ToolTips
+from idelucs.utils_GUI import define_ToolTips
 import numpy as np
 import torch
 import random
 import pandas as pd
 import os
 import csv
-from src.utils import label_features
+from idelucs.utils import label_features
 sys.stdout.write("\r... loading libraries [50%]..........")
 sys.stdout.flush()
 import umap

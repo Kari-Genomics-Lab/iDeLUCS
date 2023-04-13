@@ -1,0 +1,17 @@
+LICENCE.md
+README.md
+iDeLUCS.py
+setup.py
+iDeLUCS.egg-info/PKG-INFO
+iDeLUCS.egg-info/SOURCES.txt
+iDeLUCS.egg-info/dependency_links.txt
+iDeLUCS.egg-info/requires.txt
+iDeLUCS.egg-info/top_level.txt
+idelucs/LossFunctions.py
+idelucs/PytorchUtils.py
+idelucs/ResNet.py
+idelucs/__init__.py
+idelucs/kmers_non_cython.py
+idelucs/models.py
+idelucs/utils.py
+idelucs/utils_GUI.py
