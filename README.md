@@ -41,7 +41,7 @@ pip insatll ideLUCS
 $ python iDeLUCS.py -h 	
 ```
 
-## Installation for the CLI Application:
+## Installation for the GUI:
 No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal. However, if you do not want to execute the tool form the terminal, you may download the executable files:
 
 - For Windows: here.
