@@ -40,7 +40,7 @@ pip install -e .
 
 3. Test installation
 ```
-python iDeLUCS.py -h 	
+idelucs -h 	
 ```
 
 ## Installation for the GUI:
