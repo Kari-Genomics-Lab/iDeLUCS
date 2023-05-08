@@ -873,7 +873,7 @@ class Ui_MainWindow(object):
         elif self.args['weight'] > 1.0 or self.args['weight'] < 0.1:
             QMessageBox.critical(self.centralwidget, "Error!", "Training weight bust be in [0.1, 1.0]")
 
-        elif self.args['n_clusterse'] == 1:
+        elif self.args['n_clusters'] == 1:
             QMessageBox.critical(self.centralwidget, "Error!", "Number of clusters cannot be 1")
 
         else:
