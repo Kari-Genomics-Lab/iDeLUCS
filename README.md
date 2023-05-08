@@ -16,33 +16,39 @@ $ source dev_iDeLUCS/bin/activate
 ```
 or if you are on Windows:
 ```
-$ python3 -m venv dev_iDeLUCS
-$ dev_iDeLUCS/Scripts/activate
+python3 -m venv dev_iDeLUCS
+dev_iDeLUCS/Scripts/activate
 ```
 
 1. Clone this reposotory
 ```
-$ git clone https://github.com/millanp95/iDeLUCS.git iDeLUCS
+git clone https://github.com/millanp95/iDeLUCS.git iDeLUCS
 ```
 
 2. Install the package
-```
-cd iDelUCS
-pip install -e .
-```
 
 If you do not plan to use the GUI you can also install the package directly from Pypi:
 ```
 pip install ideLUCS
 ```
+Otherwise>
+```
+cd iDelUCS
+python setup.py build_ext --inplace
+pip install -e .
+```
 
 3. Test installation
 ```
-$ python iDeLUCS.py -h 	
+python iDeLUCS.py -h 	
 ```
 
 ## Installation for the GUI:
-No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal. However, if you do not want to execute the tool form the terminal, you may download the executable files:
+No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal.
+```
+pip install PyQt5	
+```
+If you do not want to execute the tool form the terminal, you may download the executable files:
 
 - For Windows: here.
 - For MAC OS: here.
