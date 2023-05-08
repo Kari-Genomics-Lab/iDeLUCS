@@ -63,10 +63,9 @@ The current `pip` distribution of `PyQt5` does not support Apple Silicon. Howeve
 If the above does not work, try seeing what different versions of python are inside `/opt/homebrew/opt/pyqt@5/lib` and try linking to a different version.
 
 
-## Example datasets
-We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels.
+## Running iDeLUCS
 
-### Running iDELUCS on example datasets
+We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels. But the process is similar on the user's own data.
 
 Clustering a dataset with grouth truth:
 ```
