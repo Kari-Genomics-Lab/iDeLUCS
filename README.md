@@ -11,8 +11,8 @@ The recommended installation process is via terminal and it requires [pip](https
 
 0. (**Optional**) Create and activate a new virtual environment using [venv](https://docs.python.org/3/library/venv.html)
 ```
-$ python3 -m venv dev_iDeLUCS
-$ source dev_iDeLUCS/bin/activate
+python3 -m venv dev_iDeLUCS
+source dev_iDeLUCS/bin/activate
 ```
 or if you are on Windows:
 ```
