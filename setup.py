@@ -9,5 +9,5 @@ setup(
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
         ],
-        ext_modules=[Extension(name="ideluc.kmers", sources=["idelucs/kmers.pyx"])]
+        ext_modules=[Extension(name="idelucs.kmers", sources=["idelucs/kmers.pyx"])]
     )
