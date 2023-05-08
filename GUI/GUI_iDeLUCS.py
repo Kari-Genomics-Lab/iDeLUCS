@@ -1241,7 +1241,7 @@ class Ui_MainWindow(object):
 
         w_df = pd.DataFrame(self.confussion_matrix)
         w_df.index = self.unique_labels
-        w_df.to_csv(f'{folder_nam}/{time_stamp}/contingency_matrix.tsv',sep='\t')
+        w_df.to_csv(f'{folder_name}/{time_stamp}/contingency_matrix.tsv',sep='\t')
 
 
 
