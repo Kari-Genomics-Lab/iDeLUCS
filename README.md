@@ -31,7 +31,7 @@ If you do not plan to use the GUI you can also install the package directly from
 ```
 pip install ideLUCS
 ```
-Otherwise>
+Otherwise:
 ```
 cd iDelUCS
 python setup.py build_ext --inplace
