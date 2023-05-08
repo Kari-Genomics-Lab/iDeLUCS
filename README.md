@@ -44,14 +44,11 @@ idelucs -h
 ```
 
 ## Installation for the GUI:
-No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal.
 ```
 pip install PyQt5	
 ```
-If you do not want to execute the tool form the terminal, you may download the executable files:
-
-- For Windows: here.
-- For MAC OS: here.
+No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal.
+If you do not want to execute the tool form the terminal, you may download the executable files [here](https://vault.cs.uwaterloo.ca/s/qrNBSgAAHLrYLAc)
 
 **Note:** iDeLUCS uses PyTorch as the machine learning development framework and its latest stable release might not be compatible with your version of CUDA. The GUI is built using the Qt platform, make sure you have Qt platform plugings installed. 
 
