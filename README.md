@@ -77,8 +77,7 @@ Clustering an unkown dataset:
 idelucs --sequence_file=Example/Actinopterygii.fas --n_epochs=30 --k=6 --n_clusters=3 --n_mimics=8 --batch_sz=256
 ```
 
-Running iDelUCS GUI from terminal
-GUI: 
+Running iDeLUCS GUI from terminal: 
 ```
 cd iDeLCUS/GUI
 python GUI_iDeLUCS.py
