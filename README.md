@@ -29,7 +29,7 @@ git clone https://github.com/millanp95/iDeLUCS.git iDeLUCS
 
 If you do not plan to use the GUI you can also install the package directly from Pypi:
 ```
-pip install ideLUCS
+pip install idelucs
 ```
 Otherwise:
 ```
