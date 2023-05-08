@@ -33,7 +33,7 @@ pip install -e .
 
 If you do not plan to use the GUI you can also install the package directly from Pypi:
 ```
-pip insatll ideLUCS
+pip install ideLUCS
 ```
 
 3. Test installation
