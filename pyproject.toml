@@ -41,5 +41,5 @@ requires = ["setuptools", "Cython", "numpy",
     "scikit-learn==1.2",
     "scipy==1.10", 
     "umap-learn==0.5.3",
-    "hdbscan==0.8.29""]
+    "hdbscan==0.8.29"]
 build-backend = "setuptools.build_meta"
