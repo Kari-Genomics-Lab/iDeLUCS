@@ -110,6 +110,7 @@ def run(args):
         model_min_loss=np.inf
 
         for i in range(args['n_epochs']):
+            print(f"EPOCH {i}")
             loss = model.contrastive_training_epoch()
             model_min_loss = min(model_min_loss, loss)
             model_loss.append(loss)

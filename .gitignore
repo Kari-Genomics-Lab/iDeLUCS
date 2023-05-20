@@ -4,3 +4,9 @@ dev_iDeLUCS/*
 .DS_Store
 Results/
 */__pycache__/*
+idelucs/kmers.c
+idelucs/kmers.cpython-*
+*.ipynb*
+idelucs.egg-info/*
+ALL_RESULTS.tsv
+build/
