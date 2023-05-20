@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from idelucs.utils import SummaryFasta, plot_confusion_matrix, \
                       label_features, compute_results
 
-import idelucs.models as models
+from idelucs import models
 
 import argparse
 import torch
