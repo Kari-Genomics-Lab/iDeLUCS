@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from idelucs.utils import SummaryFasta, plot_confusion_matrix, \
                       label_features, compute_results
 
-from idelucs import models
+import idelucs.models as models
 
 import argparse
 import torch
@@ -110,6 +110,7 @@ def run(args):
         model_min_loss=np.inf
 
         for i in range(args['n_epochs']):
+            print(f"EPOCH {i}")
             loss = model.contrastive_training_epoch()
             model_min_loss = min(model_min_loss, loss)
             model_loss.append(loss)

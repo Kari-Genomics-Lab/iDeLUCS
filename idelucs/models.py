@@ -12,7 +12,7 @@ sys.path.append('../src/')
 from .LossFunctions import IID_loss, info_nce_loss
 from .PytorchUtils import NetLinear, myNet
 from .ResNet import ResNet18
-from .utils import SequenceDataset, create_dataloader
+from .utils import SequenceDataset, create_dataloader, generate_dataloader
 
 # Random Seeds for reproducibility.
 torch.manual_seed(0)
@@ -113,8 +113,14 @@ class IID_model():
     def contrastive_training_epoch(self):
         self.net.train()
         running_loss = 0.0
-
-        for i_batch, sample_batched in enumerate(self.dataloader):
+        dataloader = generate_dataloader(
+            self.sequence_file,
+            self.n_mimics,
+            self.k,
+            self.batch_sz,
+            self.reduce
+        )
+        for i_batch, sample_batched in enumerate(dataloader):
             sample = sample_batched['true'].view(-1, 1, self.n_features).type(dtype)
             modified_sample = sample_batched['modified'].view(-1, 1, self.n_features).type(dtype)
             

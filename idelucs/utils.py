@@ -13,7 +13,6 @@ from sklearn.cluster import KMeans
 
 import torch 
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.data import DataLoader
 
 from scipy.optimize import linear_sum_assignment
 from sklearn.preprocessing import StandardScaler
@@ -245,7 +244,6 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
 
 
                 kmers.append(counts / np.sum(counts))
-                
                 lines = []
                 seq_id = line[1:-1].decode()  # Modify this according to your labels.  
             seq_id = line[1:-1].decode()
@@ -618,3 +616,81 @@ def compute_results(y_pred, data, y_true=None):
 
     return d, None
 
+from torch.utils.data import IterableDataset
+class NewAugmentedDataset(IterableDataset):
+    def __init__(self, sequence_file, n_mimics, k=6, reduce=False):
+        self.file = open(sequence_file, 'r+b')
+        self.n_mimics = n_mimics
+        self.reduce = reduce
+        self.k = k
+        self.scaler = self.generate_scaler()
+        
+    def generate_kmer(self, sequence, k, transform=None, reduce=False, scale=True):
+        if transform:
+            transform(sequence)
+        counts = np.ones(4**k, dtype=np.int32)
+        kmer_counts(sequence, k, counts)
+        
+        if reduce:
+            counts = kmer_rev_comp(counts, k)
+            
+        if scale:
+            return self.scaler.transform([counts / np.sum(counts)])[0]
+        return counts / np.sum(counts)
+
+    def generate_scaler(self):
+        scaler = StandardScaler()
+        for line in self.file:
+            if line.startswith(b'>'):
+                continue
+            normal = self.generate_kmer(bytearray(line), self.k, transition_transversion(1e-2, 0.5e-2), self.reduce, scale=False)
+            scaler.partial_fit([normal])
+        self.file.seek(0)
+        return scaler
+            
+    def __iter__(self):
+        for line in self.file:
+            if line.startswith(b'>'):
+                continue
+            # generating the normal
+            normal = self.generate_kmer(bytearray(line), self.k, transition_transversion(1e-2, 0.5e-2), self.reduce)
+            # mutated #1
+            mutated1 = self.generate_kmer(bytearray(line), self.k, transition(1e-2), self.reduce)
+            # mutated #2
+            mutated2 = self.generate_kmer(bytearray(line), self.k, transversion(0.5e-2), self.reduce)
+            yield {"true": normal, "modified": mutated1}
+            yield {"true": normal, "modified": mutated2}
+            
+            for _ in range(self.n_mimics - 2):
+                mutated = self.generate_kmer(bytearray(line), self.k, Random_N(20), self.reduce)
+                yield {"true": normal, "modified": mutated}
+
+import torch
+class ShuffleDataset(IterableDataset):
+    def __init__(self, dataset, buffer_size):
+        super().__init__()
+        self.dataset = dataset
+        self.buffer_size = buffer_size
+
+    def yield_from_shuffled(self, arr):
+        for index in torch.randperm(len(arr)).tolist():
+            yield arr[index]
+        
+    def __iter__(self):
+        count = 0
+        shufbuf = []
+        for entry in self.dataset:
+            count += 1
+            if len(shufbuf) < self.buffer_size:
+                shufbuf.append(entry)
+            else:
+                yield from self.yield_from_shuffled(shufbuf)
+                shufbuf = []
+        yield from self.yield_from_shuffled(shufbuf)
+
+
+
+def generate_dataloader(data_path, n_mimics, k=6, batch_size=512, reduce=False):
+    dataset = ShuffleDataset(NewAugmentedDataset(data_path, n_mimics, k, reduce), batch_size * 8)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+    return dataloader
