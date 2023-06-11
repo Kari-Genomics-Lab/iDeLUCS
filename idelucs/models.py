@@ -12,7 +12,7 @@ sys.path.append('../src/')
 from .LossFunctions import IID_loss, info_nce_loss
 from .PytorchUtils import NetLinear, myNet
 from .ResNet import ResNet18
-from .utils import SequenceDataset, create_dataloader, generate_dataloader
+from .utils import SequenceDataset, create_dataloader, generate_dataloader, generate_dataloader_tfrecord
 
 # Random Seeds for reproducibility.
 torch.manual_seed(0)
@@ -48,7 +48,6 @@ class IID_model():
 
         self.sequence_file = args['sequence_file']
         self.GT_file = args['GT_file']
-
         self.n_clusters = args['n_clusters']
         self.k = args['k']
         
@@ -57,7 +56,7 @@ class IID_model():
             self.net = NetLinear(self.n_features, args['n_clusters'])
             self.reduce = False
             
-        elif args['model_size'] == 'small':
+        elif args['model_size'] == 'smal l':
             if self.k % 2 == 0: n_in = (4**self.k + 4**(self.k//2))//2 
             else: n_in = (4**self.k)//2
             #d = {4: 135, 5: 511, 6: 2079}
@@ -102,18 +101,32 @@ class IID_model():
         #Data Files
         data_path = self.sequence_file
         GT_file = self.GT_file
-                
-        self.dataloader = create_dataloader(data_path, 
+        
+        if self.sequence_file.endswith('.tfrecord'):
+            self.dataloader = generate_dataloader_tfrecord(data_path, 
                                              self.n_mimics, 
                                              k=self.k, 
                                              batch_size=self.batch_sz, 
-                                             GT_file=GT_file,
                                              reduce=self.reduce)
+        else:
+            self.dataloader = create_dataloader(data_path, 
+                                                self.n_mimics, 
+                                                k=self.k, 
+                                                batch_size=self.batch_sz, 
+                                                GT_file=GT_file,
+                                                reduce=self.reduce)
 
     def contrastive_training_epoch(self):
         self.net.train()
         running_loss = 0.0
-        dataloader = generate_dataloader(
+        # dataloader = generate_dataloader(
+        #     self.sequence_file,
+        #     self.n_mimics,
+        #     self.k,
+        #     self.batch_sz,
+        #     self.reduce
+        # )
+        dataloader = generate_dataloader_tfrecord(
             self.sequence_file,
             self.n_mimics,
             self.k,
@@ -151,12 +164,19 @@ class IID_model():
     def predict(self, data=None):
         
         n_features = self.n_features
+        # if self.sequence_file.endswith('.tfrecord'):
+        #     test_dataloader = generate_dataloader_tfrecord(self.sequence_file, 
+        #                                      self.n_mimics, 
+        #                                      k=self.k, 
+        #                                      batch_size=self.batch_sz, 
+        #                                      reduce=self.reduce)
+        # else:
         test_dataset = SequenceDataset(self.sequence_file, k=self.k, transform=None, GT_file=self.GT_file, reduce=self.reduce)
         test_dataloader = DataLoader(test_dataset, 
-                             batch_size=self.batch_sz,
-                             shuffle=False,
-                             num_workers=0,
-                             drop_last=False)
+                            batch_size=self.batch_sz,
+                            shuffle=False,
+                            num_workers=0,
+                            drop_last=False)
         y_pred = []
         probabilities = []
         latent = []

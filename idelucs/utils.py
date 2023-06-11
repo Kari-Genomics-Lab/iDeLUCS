@@ -17,6 +17,8 @@ from torch.utils.data import Dataset, DataLoader
 from scipy.optimize import linear_sum_assignment
 from sklearn.preprocessing import StandardScaler
 
+from tfrecord.torch.dataset import TFRecordDataset
+
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
 
@@ -144,43 +146,57 @@ def SummaryFasta(fname, GT_file=None):
         GT_dict = dict(zip(df.sequence_id, df.cluster_id))
         cluster_dis = df['cluster_id'].value_counts().to_dict()
 
-    for line in open(fname, "rb"):
+    if fname.endswith('.tfrecord'):
+        reader = TFRecordDataset(fname, None)
+        for cur_entry in reader:
+            seq_id, seq = cur_entry["sequence_name"].decode(), cur_entry["sequence"]
+            if (GT_file and not seq_id in GT_dict):
+                raise ValueError('Check GT for sequence {}'.format(seq_id))
+            seq = check_sequence(seq_id, seq)
+            names.append(seq_id)
+            lengths.append(len(seq))
+            if GT_file:
+                ground_truth.append(GT_dict[seq_id])
 
-        if line.startswith(b'#'):
-            pass
+    else:
+        reader = open(fname, "rb")
+        for line in reader:
 
-        elif line.startswith(b'>'):
-            if seq_id != "":
-                seq = bytearray().join(lines)
+            if line.startswith(b'#'):
+                pass
 
-                if (GT_file and not seq_id in GT_dict):
-                    raise ValueError('Check GT for sequence {}'.format(seq_id))
+            elif line.startswith(b'>'):
+                if seq_id != "":
+                    seq = bytearray().join(lines)
 
-                seq = check_sequence(seq_id, seq)
-                names.append(seq_id)
-                lengths.append(len(seq))
+                    if (GT_file and not seq_id in GT_dict):
+                        raise ValueError('Check GT for sequence {}'.format(seq_id))
 
-                if GT_file:
-                    ground_truth.append(GT_dict[seq_id])
+                    seq = check_sequence(seq_id, seq)
+                    names.append(seq_id)
+                    lengths.append(len(seq))
 
-                lines = []
-                seq_id = line[1:-1].decode()  # Modify this according to your labels. 
+                    if GT_file:
+                        ground_truth.append(GT_dict[seq_id])
+
+                    lines = []
+                    seq_id = line[1:-1].decode()  # Modify this according to your labels. 
+                
+                seq_id = line[1:-1].decode()
             
-            seq_id = line[1:-1].decode()
-        
-        else:
-            lines += [line.strip()]
-  
-    if (GT_file and not seq_id in GT_dict):
-        raise ValueError('Check GT for sequence {}'.format(seq_id))
+            else:
+                lines += [line.strip()]
+    
+        if (GT_file and not seq_id in GT_dict):
+            raise ValueError('Check GT for sequence {}'.format(seq_id))
 
-    seq = bytearray().join(lines)
-    seq = check_sequence(seq_id, seq)
-    names.append(seq_id) 
-    lengths.append(len(seq))
+        seq = bytearray().join(lines)
+        seq = check_sequence(seq_id, seq)
+        names.append(seq_id) 
+        lengths.append(len(seq))
 
-    if GT_file:
-        ground_truth.append(GT_dict[seq_id])
+        if GT_file:
+            ground_truth.append(GT_dict[seq_id])
 
     return names, lengths, ground_truth, cluster_dis
 
@@ -223,50 +239,59 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
     seq_id = ""
     names, kmers = [], []
 
-    for line in open(fname, "rb"):
-        if line.startswith(b'#'):
-            pass
+    if fname.endswith('.tfrecord'):
+        reader = TFRecordDataset(fname, None)
+        for cur_entry in reader:
+            seq_id, seq = cur_entry["sequence_name"].decode(), bytearray(cur_entry["sequence"])
+            names.append(seq_id)
+            if transform:
+                transform(seq)
+            counts = np.ones(4**k, dtype=np.int32)
+            kmer_counts(seq, k, counts)
+            if reduce:
+                counts = kmer_rev_comp(counts,k)
+            kmers.append(counts / np.sum(counts))
 
-        elif line.startswith(b'>'):
-            if seq_id != "":
-                seq = bytearray().join(lines)
-                names.append(seq_id)  
-                            
-                if transform:
-                    transform(seq)
-                    
-                counts = np.ones(4**k, dtype=np.int32)
-                kmer_counts(seq, k, counts)
-                #cgr(seq, k, counts)
+    else:
+        for line in open(fname, "rb"):
+            if line.startswith(b'#'):
+                pass
 
-                if reduce:
-                    counts = kmer_rev_comp(counts,k)
+            elif line.startswith(b'>'):
+                if seq_id != "":
+                    seq = bytearray().join(lines)
+                    names.append(seq_id)  
+                                
+                    if transform:
+                        transform(seq)
+                        
+                    counts = np.ones(4**k, dtype=np.int32)
+                    kmer_counts(seq, k, counts)
+                    #cgr(seq, k, counts)
+
+                    if reduce:
+                        counts = kmer_rev_comp(counts,k)
 
 
-                kmers.append(counts / np.sum(counts))
-                lines = []
-                seq_id = line[1:-1].decode()  # Modify this according to your labels.  
-            seq_id = line[1:-1].decode()
-        
-        else:
-            lines += [line.strip()]
-  
-    seq = bytearray().join(lines)
-    names.append(seq_id)
-    if transform:
-        transform(seq)
-        
-    counts = np.ones(4**k, dtype=np.int32)
-    kmer_counts(seq, k, counts)
-    #cgr(seq, k, counts)
-    if reduce:
-        counts = kmer_rev_comp(counts,k)
-    kmers.append(counts / np.sum(counts))
+                    kmers.append(counts / np.sum(counts))
+                    lines = []
+                    seq_id = line[1:-1].decode()  # Modify this according to your labels.  
+                seq_id = line[1:-1].decode()
+            
+            else:
+                lines += [line.strip()]
     
-    #if reduce:
-    #    K_file = np.load(open(f'kernels/kernel{k}.npz','rb'))
-    #    KERNEL = K_file['arr_0']
-    #    return names, np.dot(np.array(kmers), KERNEL)
+        seq = bytearray().join(lines)
+        names.append(seq_id)
+        if transform:
+            transform(seq)
+            
+        counts = np.ones(4**k, dtype=np.int32)
+        kmer_counts(seq, k, counts)
+        #cgr(seq, k, counts)
+        if reduce:
+            counts = kmer_rev_comp(counts,k)
+        kmers.append(counts / np.sum(counts))
         
     return names, np.array(kmers)
 
@@ -688,7 +713,58 @@ class ShuffleDataset(IterableDataset):
                 shufbuf = []
         yield from self.yield_from_shuffled(shufbuf)
 
+class TfrecordAugmentedDataset(IterableDataset):
+    def __init__(self, sequence_file, n_mimics, k=6, reduce=False):
+        self.file = TFRecordDataset(sequence_file, None, shuffle_queue_size=1024)
+        self.n_mimics = n_mimics
+        self.reduce = reduce
+        self.k = k
+        self.scaler = self.generate_scaler()
+        
+    def generate_kmer(self, sequence, k, transform=None, reduce=False, scale=True):
+        if transform:
+            transform(sequence)
+        counts = np.ones(4**k, dtype=np.int32)
+        kmer_counts(sequence, k, counts)
+        
+        if reduce:
+            counts = kmer_rev_comp(counts, k)
+            
+        if scale:
+            return self.scaler.transform([counts / np.sum(counts)])[0]
+        return counts / np.sum(counts)
 
+    def generate_scaler(self):
+        print("Building the scaler for tfrecord file")
+        scaler = StandardScaler()
+        for entry in self.file:
+            seq_name, sequence = entry["sequence_name"], entry["sequence"]
+            normal = self.generate_kmer(bytearray(sequence), self.k, transition_transversion(1e-2, 0.5e-2), self.reduce, scale=False)
+            scaler.partial_fit([normal])
+        return scaler
+            
+    def __iter__(self):
+        cur_id = ""
+        for entry in self.file:
+            seq_name, sequence = entry["sequence_name"], entry["sequence"]
+            # generating the normal
+            normal = self.generate_kmer(bytearray(sequence), self.k, transition_transversion(1e-2, 0.5e-2), self.reduce)
+            # mutated #1
+            mutated1 = self.generate_kmer(bytearray(sequence), self.k, transition(1e-2), self.reduce)
+            # mutated #2
+            mutated2 = self.generate_kmer(bytearray(sequence), self.k, transversion(0.5e-2), self.reduce)
+            yield {"true": normal, "modified": mutated1}
+            yield {"true": normal, "modified": mutated2}
+            
+            for _ in range(self.n_mimics-2):
+                mutated = self.generate_kmer(bytearray(sequence), self.k, Random_N(20), self.reduce)
+                yield {"true": normal, "modified": mutated}
+
+
+def generate_dataloader_tfrecord(data_path, n_mimics, k=6, batch_size=512, reduce=False):
+    dataset = TfrecordAugmentedDataset(data_path, n_mimics, k, reduce)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+    return dataloader
 
 def generate_dataloader(data_path, n_mimics, k=6, batch_size=512, reduce=False):
     dataset = ShuffleDataset(NewAugmentedDataset(data_path, n_mimics, k, reduce), batch_size * 8)

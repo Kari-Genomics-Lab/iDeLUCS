@@ -10,3 +10,5 @@ idelucs/kmers.cpython-*
 idelucs.egg-info/*
 ALL_RESULTS.tsv
 build/
+*.tfrecord
+s_50*
