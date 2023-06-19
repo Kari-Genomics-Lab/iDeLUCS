@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 from idelucs.utils import SummaryFasta, plot_confusion_matrix, \
-                      label_features, compute_results
+                      label_features, compute_results, cluster_acc
 
 from idelucs import models
 
@@ -157,16 +157,43 @@ def run(args):
     if args['GT_file'] != None:
         unique_labels = list(np.unique(model.GT))
         numClasses = len(unique_labels)
+        predictions = []
         y = np.array(list(map(lambda x: unique_labels.index(x), model.GT)))
-        results, ind = compute_results(y_pred, latent, y)
+        np.set_printoptions(threshold=np.inf)
 
+        results, ind = compute_results(y_pred, latent, y)
+        print("Without fine-tuning result:", results)
+
+        if args["fine_tune"]:
+            ind, acc = cluster_acc(y, y_pred)
+            
+            # print("Y-pred: ", y_pred)
+            for i in range(10):
+                model.fine_tune(ind)
+            y_pred, probabilities, latent = model.predict()
+            y_pred = y_pred.astype(np.int32)
+            
+            d = {}
+            count = 0
+            for i in range(y_pred.shape[0]):
+                if y_pred[i] in d:
+                    y_pred[i] = d[y_pred[i]]
+                else:
+                    d[y_pred[i]] = count
+                    y_pred[i] = count
+                    count += 1
+            predictions.append(y_pred)
+            y_pred, probabilities = label_features(np.array(predictions), args['n_clusters'])
+        results, ind = compute_results(y_pred, latent, y)
+        # print(results, ind, y, y_pred)
         d = {}
         for i, j in ind:
             d[i] = j
         
+        # d maps predicted to truth
         if -1 in y_pred:
             d[-1] = 0
-        
+
         w = np.zeros((numClasses, max(max(y_pred) + 1, max(y) + 1)), dtype=np.int64)
         clustered = np.zeros_like(y, dtype=bool)
         for i in range(y.shape[0]):
@@ -191,6 +218,8 @@ def run(args):
         #clustered = (probabilities >= 0.9)
         clustered = (probabilities >= 0.0)
     
+
+
     print(results)
     sys.stdout.write(f"\r........ Saving Results ..............")
     sys.stdout.flush()
@@ -259,6 +288,8 @@ def run(args):
 def main():
     parser= argparse.ArgumentParser()
     parser.add_argument('--sequence_file', action='store',type=str)
+    parser.add_argument('--fine_tune', action='store',type=bool, default=False)
+
     parser.add_argument('--n_clusters', action='store',type=int,default=0,
                         help='Expected or maximum number of clusters to find. \n'
                             'It should be equal or greater than n_true_clusters \n'

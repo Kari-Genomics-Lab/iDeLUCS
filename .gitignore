@@ -12,3 +12,4 @@ ALL_RESULTS.tsv
 build/
 *.tfrecord
 s_50*
+Example/*_shuffled.fas

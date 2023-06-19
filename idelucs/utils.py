@@ -386,6 +386,28 @@ def AugmentFasta(sequence_file, n_mimics, k=6, reduce=False):
     
     return x_train
 
+class FinetuneDataset(Dataset):
+    def __init__(self, true_to_generated_labels, gt_file, sequence_file, k=6, transform=None, reduce=None) -> None:
+        _, _, labels, _ = SummaryFasta(sequence_file, gt_file)
+        _, self.data = kmersFasta(sequence_file, k, transform, reduce=reduce)
+
+        unique_labels = list(np.unique(labels))
+        self.labels = np.array(list(map(lambda x: true_to_generated_labels[unique_labels.index(x)], labels)))
+
+        # print("LABELS: " ,self.labels)
+
+    def __len__(self):
+        return int(self.data.shape[0]/10) # fine tune using 1/10th
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        sample = {'true': self.data[idx], 'label': self.labels[idx]}
+        return sample    
+
+
+
 class AugmentedDataset(Dataset):
     """ 
     Dataset creation directly from fasta file.
@@ -768,5 +790,10 @@ def generate_dataloader_tfrecord(data_path, n_mimics, k=6, batch_size=512, reduc
 
 def generate_dataloader(data_path, n_mimics, k=6, batch_size=512, reduce=False):
     dataset = ShuffleDataset(NewAugmentedDataset(data_path, n_mimics, k, reduce), batch_size * 8)
+    dataloader = DataLoader(dataset, batch_size=batch_size)
+    return dataloader
+
+def generate_finetune_dataloader(true_to_generated_labels, gt_file, sequence_file, k=6, batch_size=512, reduce=False):
+    dataset = FinetuneDataset(true_to_generated_labels, gt_file, sequence_file, k, transform=None, reduce=reduce)
     dataloader = DataLoader(dataset, batch_size=batch_size)
     return dataloader

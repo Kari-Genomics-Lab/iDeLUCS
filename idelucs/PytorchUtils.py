@@ -35,11 +35,17 @@ class NetLinear(nn.Module):
         super(NetLinear, self).__init__()
         self.n_input = n_input
         self.layers  = nn.Sequential(
-
             nn.Linear(n_input, 512),
             nn.ReLU(),
             nn.Dropout(p=0.5),
             nn.Linear(512, 64)            
+        )
+
+        self.fine_tune_layer = nn.Sequential(
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+            nn.Linear(64, n_output),  
+            nn.Softmax(dim=1)
         )
 
         self.classifier = nn.Sequential(
@@ -54,6 +60,12 @@ class NetLinear(nn.Module):
         latent = self.layers(x)
         out = self.classifier(latent)
         return out, latent
+
+    def fine_tune(self, x):
+        x = x.view(-1, self.n_input)
+        x = self.layers(x)
+        out = self.fine_tune_layer(x)
+        return out
     
 
 class myDataset(Dataset):

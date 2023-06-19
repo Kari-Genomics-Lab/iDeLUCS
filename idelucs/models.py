@@ -12,7 +12,7 @@ sys.path.append('../src/')
 from .LossFunctions import IID_loss, info_nce_loss
 from .PytorchUtils import NetLinear, myNet
 from .ResNet import ResNet18
-from .utils import SequenceDataset, create_dataloader, generate_dataloader, generate_dataloader_tfrecord
+from .utils import SequenceDataset, create_dataloader, generate_dataloader, generate_dataloader_tfrecord, generate_finetune_dataloader
 
 # Random Seeds for reproducibility.
 torch.manual_seed(0)
@@ -116,6 +116,42 @@ class IID_model():
                                                 GT_file=GT_file,
                                                 reduce=self.reduce)
 
+    def fine_tune(self, ind):
+        # maps true labels to new labels
+        d = {}
+        for j, i in ind:
+            d[i] = j
+        self.net.train()
+        dataloader = generate_finetune_dataloader(
+            d,
+            self.GT_file,
+            self.sequence_file,
+            self.k,
+            self.batch_sz,
+            self.reduce
+        )
+        loss_func = nn.CrossEntropyLoss()
+        for _, sample_batched in enumerate(dataloader):
+            sample = sample_batched['true'].view(-1, 1, self.n_features).type(dtype)
+            labels = torch.nn.functional.one_hot(sample_batched['label'], num_classes=self.n_clusters).type(dtype)
+            # print(labels)
+
+            self.optimizer.zero_grad()
+
+            pred_result = self.net.fine_tune(sample)
+            # print(pred_result)
+
+            loss = loss_func(pred_result, labels)
+            # print(loss)
+            loss.backward()
+            self.optimizer.step()
+
+
+        if self.schedule == 'Plateau':
+            self.scheduler.step(running_loss)
+        elif self.schedule == 'Triangle':
+            self.scheduler.step()
+            
     def contrastive_training_epoch(self):
         self.net.train()
         running_loss = 0.0
@@ -126,14 +162,14 @@ class IID_model():
         #     self.batch_sz,
         #     self.reduce
         # )
-        dataloader = generate_dataloader_tfrecord(
-            self.sequence_file,
-            self.n_mimics,
-            self.k,
-            self.batch_sz,
-            self.reduce
-        )
-        for i_batch, sample_batched in enumerate(dataloader):
+        # dataloader = generate_dataloader_tfrecord(
+        #     self.sequence_file,
+        #     self.n_mimics,
+        #     self.k,
+        #     self.batch_sz,
+        #     self.reduce
+        # )
+        for i_batch, sample_batched in enumerate(self.dataloader):
             sample = sample_batched['true'].view(-1, 1, self.n_features).type(dtype)
             modified_sample = sample_batched['modified'].view(-1, 1, self.n_features).type(dtype)
             
