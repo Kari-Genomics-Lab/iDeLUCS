@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import sys
@@ -5,6 +6,7 @@ import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from multiprocessing import cpu_count
 
 
 from idelucs.utils import SummaryFasta, plot_confusion_matrix, \
@@ -18,6 +20,7 @@ import sys
 import time
 
 import csv
+from resource import *
 #-------------------------------
 import hdbscan
 
@@ -45,6 +48,7 @@ def save_results_in_file(dataset_name, model_name, model_parameters, results, ti
 
 def run(args):
 
+
     start_time = time.time()
     now = time.asctime()
     time_stamp = now.split(' ')
@@ -68,8 +72,6 @@ def run(args):
     
     os.mkdir(f'{results_folder}/{time_stamp}')
 
-    
-    assert args['n_clusters'] != 1,"List is empty."
     if args['n_clusters'] == 0:
         args['n_clusters'], use_hdbscan = 200, True
         
@@ -109,11 +111,14 @@ def run(args):
         model_loss = []
         model_min_loss=np.inf
 
+        #print("before training")
         for i in range(args['n_epochs']):
             loss = model.contrastive_training_epoch()
+            #print("Next epoch")
             model_min_loss = min(model_min_loss, loss)
             model_loss.append(loss)
 
+        #print("Out of training")
         length = len(model.names)
         y_pred, probabilities, latent = model.predict()
 
@@ -134,8 +139,10 @@ def run(args):
                     count += 1
             predictions.append(y_pred)
 
+        
         display_training.plot(model_loss, label=f'Model {voter+1}')
         display_training.axes.legend(loc=1)
+        #print("plotting is not the problem")
         training_figure.savefig(f'{results_folder}/{time_stamp}/training_plots.jpg')
                                                                 
 
@@ -200,13 +207,13 @@ def run(args):
     del args['sequence_file']
     del args['GT_file']
     
-
+    running_info = getrusage(RUSAGE_SELF)
     _time = (time.time() - start_time) #running_info.ru_utime + running_info.ru_stime
     hour = _time // 3600
     minutes = (_time  - (3600 * hour)) // 60
     seconds = _time - (hour * 3600) - (minutes * 60)
-    memory = "" #(running_info.ru_maxrss/1e6)
-    print("") #running_info)
+    memory = (running_info.ru_maxrss/1e6)
+    print(f'training took: {int(hour)}:{int(minutes)}:{round(seconds)} (hh:mm:ss) and {memory} (GB)')
     
     names = np.array(model.names)
     data = np.concatenate((names[:,np.newaxis],
@@ -220,7 +227,7 @@ def run(args):
     df.to_csv(f'{results_folder}/{time_stamp}/metrics.tsv',sep='\t')
     
     save_results_in_file(dataset_name, "iDeLUCS", args, results, 
-                         f'{hour}:{minutes}:{seconds}', 
+                         f'{int(hour)}:{int(minutes)}:{round(seconds)}', 
                          memory, f'{os.getcwd()}/ALL_RESULTS.tsv')
 
     # ------------------------------- Computing and Saving the Representations
@@ -243,16 +250,24 @@ def run(args):
         ax.set_xlabel("UMAP 1")
         ax.set_ylabel("UMAP 2")
 
-        ax.scatter(embedding[mask & ~clustered, 0],
-                   embedding[mask & ~clustered, 1],
-                   c = np.atleast_2d([0.5, 0.5, 0.5]),
-                   s=1,
-                   alpha=0.5)
-        ax.scatter(embedding[mask & clustered, 0],
-                  embedding[mask & clustered, 1],
-                  c=y[mask & clustered],  #y_pred[mask & clustered]
-                  s=1,
-                  cmap='Spectral')
+        # ax.scatter(embedding[mask & ~clustered, 0],
+        #            embedding[mask & ~clustered, 1],
+        #            c = np.atleast_2d([0.5, 0.5, 0.5]),
+        #            s=1,
+        #            alpha=0.5)
+        # ax.scatter(embedding[mask & clustered, 0],
+        #           embedding[mask & clustered, 1],
+        #           c=y[mask & clustered],  #y_pred[mask & clustered]
+        #           s=1,
+        #           cmap='Spectral')
+
+        ax.scatter(embedding[:, 0],
+                       embedding[:, 1],
+                       c = y,
+                       s=1,
+                       alpha=0.5)
+            
+
         fig.savefig(f'{results_folder}/{time_stamp}/learned_representation.jpg', dpi=150)
     
 def main():
@@ -296,6 +311,8 @@ def main():
     print("\nTraining Parameters:")
     for key in args:
         print(f'{key} \t -> {args[key]}')
+
+    torch.set_num_threads(cpu_count() - 2 )    
     
     run(args)
 
