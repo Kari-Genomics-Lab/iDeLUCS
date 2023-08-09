@@ -1,6 +1,7 @@
 import sys
 import time
 
+sys.path.append('../')
 sys.stdout.write(" ... loading libraries [5%]..........")
 sys.stdout.flush()
 
@@ -9,6 +10,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QFile, QTextStream, QThread, pyqtSignal, Qt, QTimer
 from PyQt5.QtWidgets import QMessageBox, QWidget
 from PyQt5.QtGui import QPixmap
+from multiprocessing import cpu_count
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True) #enable highdpi scaling
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True) #use highdpi icons
@@ -84,6 +86,7 @@ class WorkerThread(QThread):
     np.random.seed(0)
     random.seed(0)
 
+    torch.set_num_threads(cpu_count() - 2 ) 
 
     def __init__(self, model, args):
         super().__init__()

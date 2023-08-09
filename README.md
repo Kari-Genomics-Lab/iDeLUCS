@@ -31,7 +31,7 @@ If you do not plan to use the GUI you can also install the package directly from
 ```
 pip install idelucs
 ```
-Otherwise:
+or you can build it from source:
 ```
 cd iDelUCS
 python setup.py build_ext --inplace
@@ -47,8 +47,7 @@ idelucs -h
 ```
 pip install PyQt5	
 ```
-No further steps are needed after clonning the repository if you are comfortable with executing the script from the terminal.
-If you do not want to execute the tool form the terminal, you may download the executable files [here](https://vault.cs.uwaterloo.ca/s/qrNBSgAAHLrYLAc)
+If you are comfortable with executing the script from the terminal, no further steps are needed. If you do not want to execute the tool form the terminal, you may download the executable files [here](https://vault.cs.uwaterloo.ca/s/qrNBSgAAHLrYLAc)
 
 **Note:** iDeLUCS uses PyTorch as the machine learning development framework and its latest stable release might not be compatible with your version of CUDA. The GUI is built using the Qt platform, make sure you have Qt platform plugings installed. 
 
@@ -68,7 +67,7 @@ If the above does not work, try seeing what different versions of python are ins
 
 ## Running iDeLUCS
 
-We provide several datasets to test the perfomance of iDeLUCS to find meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels. But the process is similar on the user's own data.
+We provide several datasets to test the perfomance of iDeLUCS at finding meaningful genomic signatures for organisms in different kingdoms and at different taxonomic levels. But the process is similar on the user's own data.
 
 Clustering a dataset with grouth truth:
 ```
