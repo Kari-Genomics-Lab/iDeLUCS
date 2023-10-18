@@ -24,11 +24,12 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip' # caching pip dependencies
         cache-dependency-path: '**/pyproject.toml'
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 pytest python-dev-tools
+        python -m pip install flake8 pytest
         pip install -e .
     - name: Lint with flake8
       run: |
