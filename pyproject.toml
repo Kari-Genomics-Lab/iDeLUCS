@@ -10,7 +10,7 @@ dependencies = [
     "scikit-learn==1.2.1",
     "scipy==1.10.1", 
     "umap-learn==0.5.3",
-    "hdbscan==0.8.29"
+    "hdbscan==0.8.32"
 ]
 requires-python = "<3.12,>=3.9.0"
 scripts = {idelucs = "idelucs.__main__:main"}
@@ -41,5 +41,5 @@ requires = ["setuptools", "wheel", "Cython",
     "scikit-learn==1.2.1",
     "scipy==1.10.1", 
     "umap-learn==0.5.3",
-    "hdbscan==0.8.29"]
+    "hdbscan==0.8.32"]
 build-backend = "setuptools.build_meta"
