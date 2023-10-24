@@ -4,3 +4,5 @@ dev_iDeLUCS/*
 .DS_Store
 Results/
 */__pycache__/*
+dist/*
+*egg*

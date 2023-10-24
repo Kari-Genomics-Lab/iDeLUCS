@@ -7,7 +7,7 @@ from . import models as models
 
 
 class iDeLUCS_cluster():
-    def __init__(self, sequence_file, n_clusters=4, n_epochs=500, 
+    def __init__(self, sequence_file, n_clusters=5, n_epochs=500, 
                  n_mimics=3, batch_sz=512, k=4, weight=0.25, n_voters=1):
         
         self.args = dict()
