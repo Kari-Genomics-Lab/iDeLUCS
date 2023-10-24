@@ -3,6 +3,7 @@ from setuptools import setup, find_packages, Extension
 setup(
         include_package_data=True,
         packages=find_packages(),
+        long_description="Deep-learning based tool for clustering genomic sequences",
         
         classifiers= [
             "Programming Language :: Python :: 3",

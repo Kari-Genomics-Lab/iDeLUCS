@@ -25,7 +25,7 @@ authors = [
     {name="Pablo Millan Arias", email="pmillanan@uwaterloo.ca"}
 ]
 url = "https://github.com/Kari-Genomics-Lab/iDeLUCS"
-description = "An interactive deep-learning based tool for clustering of genomic sequences"
+description = "Deep-learning based tool for clustering genomic sequences"
 license = "MIT"
 [tool.setuptools.dynamic]
 version = {attr = "idelucs.__version__"}
