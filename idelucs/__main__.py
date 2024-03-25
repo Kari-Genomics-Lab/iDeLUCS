@@ -312,7 +312,7 @@ def main():
     for key in args:
         print(f'{key} \t -> {args[key]}')
 
-    torch.set_num_threads(cpu_count() - 2 )    
+    torch.set_num_threads(cpu_count())    
     
     run(args)
 
