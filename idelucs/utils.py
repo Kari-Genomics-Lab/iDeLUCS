@@ -20,6 +20,7 @@ from sklearn.preprocessing import StandardScaler
 
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
+from multiprocessing import cpu_count
 
 def check_sequence(header, seq):
     """
@@ -419,7 +420,7 @@ def create_dataloader(sequence_file, n_mimics, k=6, batch_size=512, GT_file=None
 
     train_data = AugmentFasta(sequence_file, n_mimics, k=k, reduce=reduce)
     training_set = AugmentedDataset(train_data)
-    if os.name == 'posix':
+    if os.name == 'posix' or cpu_count()>=4:
         return DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=4)
     else:
         return DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=0)
