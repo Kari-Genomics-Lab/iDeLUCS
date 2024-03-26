@@ -197,8 +197,8 @@ def run(args):
         #clustered = (probabilities >= 0.9)
         clustered = (probabilities >= 0.0)
     
-    print(results)
-    sys.stdout.write(f"\r........ Saving Results ..............")
+    print(f"ACC: {results['ACC']}")
+    sys.stdout.write(f"\r........ Saving Results ..............\n")
     sys.stdout.flush()
     
     
@@ -232,7 +232,7 @@ def run(args):
 
     # ------------------------------- Computing and Saving the Representations
     if args['plot']:
-        sys.stdout.write(f"\r........... Computing Representations................")
+        sys.stdout.write(f"\r........... Computing Representations................\n")
         sys.stdout.flush()
 
         import umap
