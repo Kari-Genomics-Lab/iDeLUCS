@@ -579,7 +579,7 @@ def label_features(predictions, n_clusters):
     """
     Clustering Ensemble 
     """
-    cluster = KMeans(n_clusters=n_clusters, init='k-means++')
+    cluster = KMeans(n_clusters=n_clusters, init='k-means++', n_init=10)
     features = np.zeros((predictions.shape[1], predictions.shape[0]*n_clusters))
 
     for i in range(predictions.shape[0]):
