@@ -33,7 +33,7 @@ pip install idelucs
 ```
 or you can build it from source:
 ```
-cd iDelUCS
+cd iDeLUCS
 python setup.py build_ext --inplace
 pip install -e .
 ```
