@@ -72,7 +72,7 @@ class transition(object):
 
         for i in index:
             #print(chr(seq[i]), '->', chr(mutations[seq[i]]))
-            seq[i] = mutations[mutations.get(seq[i], N)]
+            seq[i] = mutations[seq[i]]
 
 class Random_N(object):
     """
