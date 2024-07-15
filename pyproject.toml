@@ -8,7 +8,7 @@ dependencies = [
     "matplotlib==3.7",
     "pandas==2.1.1",
     "scikit-learn==1.2.1",
-    "scipy==1.10.1", 
+    "scipy==1.11.1", 
     "umap-learn==0.5.3",
     "hdbscan==0.8.32"
 ]
@@ -19,7 +19,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-
 [metadata]
 authors = [
     {name="Pablo Millan Arias", email="pmillanan@uwaterloo.ca"}
@@ -32,14 +31,5 @@ version = {attr = "idelucs.__version__"}
 readme = {file = "README.md"}
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "Cython", 
-    "numpy==1.24.2",
-    "torch>=2.0.1",
-    "cython",
-    "matplotlib==3.7",
-    "pandas==2.1.1",
-    "scikit-learn>=1.2.1",
-    "scipy==1.10.1", 
-    "umap-learn==0.5.3",
-    "hdbscan==0.8.32"]
+requires = ["setuptools>=61.0", "Cython"]
 build-backend = "setuptools.build_meta"
