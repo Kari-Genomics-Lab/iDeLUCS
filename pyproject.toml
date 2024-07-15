@@ -32,7 +32,7 @@ version = {attr = "idelucs.__version__"}
 readme = {file = "README.md"}
 
 [build-system]
-requires = ["setuptools", "wheel", "Cython", 
+requires = ["setuptools>=61.0", "wheel", "Cython", 
     "numpy==1.24.2",
     "torch>=2.0.1",
     "cython",
