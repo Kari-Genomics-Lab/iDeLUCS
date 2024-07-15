@@ -21,6 +21,7 @@ from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 from colorsys import hsv_to_rgb
 from multiprocessing import cpu_count
+from sklearn.metrics.pairwise import euclidean_distances
 
 def check_sequence(header, seq):
     """
@@ -575,7 +576,7 @@ def plot_confusion_matrix(cm,
         ax.set_xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
 
 
-from sklearn.metrics.pairwise import euclidean_distances
+
 def label_features(predictions, n_clusters):
     """
     Clustering Ensemble 
