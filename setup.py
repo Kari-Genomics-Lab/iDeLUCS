@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages, Extension
 
 setup(
-        long_description="An interactive deep-learning based tool for clustering of genomic sequences"
+        long_description="An interactive deep-learning based tool for clustering of genomic sequences",
         long_description_content_type='text/plain',
         include_package_data=True,
         packages=find_packages(),
