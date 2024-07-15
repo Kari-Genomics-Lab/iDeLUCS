@@ -10,4 +10,6 @@ setup(
             "Operating System :: OS Independent",
         ],
         ext_modules=[Extension(name="idelucs.kmers", sources=["idelucs/kmers.pyx"])]
+        long_description=open('README.md').read(),
+        long_description_content_type='text/markdown',
     )
