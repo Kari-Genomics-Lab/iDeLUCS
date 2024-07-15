@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages, Extension
 
 setup(
-        long_description=open('README.md').read(),
-        long_description_content_type='text/markdown',
+        long_description="An interactive deep-learning based tool for clustering of genomic sequences",
+        long_description_content_type='text/plain',
         include_package_data=True,
         packages=find_packages(),
         
