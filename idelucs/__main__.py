@@ -192,12 +192,13 @@ def run(args):
             w_df.index = unique_labels
             w_df.to_csv(f'{results_folder}/{time_stamp}/contingency_matrix.tsv',sep='\t')
 
+        print(f"ACC: {results['ACC']}")
     else:
         results, ind = compute_results(y_pred, latent)
         #clustered = (probabilities >= 0.9)
         clustered = (probabilities >= 0.0)
     
-    print(f"ACC: {results['ACC']}")
+    
     sys.stdout.write(f"\r........ Saving Results ..............\n")
     sys.stdout.flush()
     
