@@ -233,7 +233,8 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
         elif line.startswith(b'>'):
             if seq_id != "":
                 seq = bytearray().join(lines)
-                names.append(seq_id)  
+                seq = check_sequence(seq_id, seq)
+                names.append(seq_id)
                             
                 if transform:
                     transform(seq)
@@ -256,6 +257,7 @@ def kmersFasta(fname, k=6, transform=None, reduce=False):
             lines += [line.strip()]
   
     seq = bytearray().join(lines)
+    seq = check_sequence(seq_id, seq)
     names.append(seq_id)
     if transform:
         transform(seq)
