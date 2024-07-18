@@ -1,4 +1,4 @@
-__version__ = (1, 2, 6)
+__version__ = (1, 2, 7)
 
 from idelucs.utils import check_sequence, SummaryFasta, reverse_complement, kmer_rev_comp, kmersFasta, cgrFasta, cluster_acc, compute_results, SequenceDataset, PlotPolygon
 from idelucs.kmers import kmer_counts,cgr
